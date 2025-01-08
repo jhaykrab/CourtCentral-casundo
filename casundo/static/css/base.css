@@ -1,9 +1,108 @@
-h1 {
-color: green;
+/* General Styles */
+body {
+    margin: 0;
+    font-family: 'Roboto', Arial, sans-serif; /* Clean, modern font */
+    background-color: #f8f9fa; /* Light background for readability */
+    color: #333; /* Neutral text color */
+    line-height: 1.6; /* Comfortable text spacing */
 }
 
-.cclogo {
-    height: 200px;
-    width: auto;
+h1 {
+    color: #2C3E50; /* Modern dark color */
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center; /* Center headings */
+}
 
+/* Navbar Styles */
+header {
+    display: flex;
+    justify-content: center; /* Center-align links */
+    align-items: center;
+    background-color: #2C3E50; /* Dark modern background */
+    padding: 15px 0; /* Spacing inside navbar */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for structure */
+}
+
+header a {
+    text-decoration: none; /* Remove underline from links */
+    color: #ECF0F1; /* Light text for contrast */
+    font-size: 16px; /* Standard readable size */
+    font-weight: 500; /* Medium weight for clean look */
+    padding: 10px 15px; /* Spacing around links */
+    margin: 0 10px; /* Space between navbar links */
+    transition: color 0.3s ease; /* Smooth transition for hover effects */
+}
+
+header a:hover {
+    color: #1ABC9C; /* Bright green accent on hover */
+}
+
+/* Responsive Navbar */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column; /* Stack links vertically on small screens */
+    }
+
+    header a {
+        margin: 10px 0; /* Space between vertical links */
+    }
+}
+
+/* Image Styling */
+.cclogo {
+    height: auto;
+    width: 150px; /* Adjusted for a cleaner and consistent size */
+    display: block;
+    margin: 20px auto; /* Center the image */
+    border-radius: 10px; /* Optional for rounded edges */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Blog Post Styling */
+.post-entry {
+    background-color: #ffffff; /* White background for contrast */
+    padding: 20px;
+    margin: 20px auto; /* Margin between posts */
+    border-radius: 8px; /* Smooth edges for a modern look */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Shadow for a card-like effect */
+    max-width: 800px; /* Restrict post width for better readability */
+    transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover effect */
+}
+
+.post-entry:hover {
+    transform: translateY(-5px); /* Lift effect on hover */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
+}
+
+.post-entry h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #2C3E50; /* Heading color */
+}
+
+.post-entry p {
+    color: #555; /* Softer text color for the body */
+    font-size: 16px;
+}
+
+/* Links Inside Posts */
+.post-entry h2 a {
+    text-decoration: none;
+    color: #1ABC9C;
+    transition: color 0.3s ease;
+}
+
+.post-entry h2 a:hover {
+    color: #16a085; /* Slightly darker green on hover */
+}
+
+/* Footer (Optional if you plan to add one) */
+footer {
+    text-align: center;
+    padding: 10px 15px;
+    background-color: #2C3E50;
+    color: #ECF0F1;
+    font-size: 14px;
 }
