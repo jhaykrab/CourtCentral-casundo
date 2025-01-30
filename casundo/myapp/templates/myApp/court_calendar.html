@@ -1,0 +1,70 @@
+{% extends 'myApp/base.html' %}
+{% load static %}
+
+{% block styles %}
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css' rel='stylesheet' />
+{% endblock %}
+
+{% block content %}
+    <h1>Court Calendar</h1>
+    <div id='calendar' style="width: 100%; height: 600px;"></div>
+
+    {% if selected_date %}
+        <h2>Reservations for {{ selected_date }}</h2>
+        {% if reservations %}
+            <ul>
+                {% for reservation in reservations %}
+                    <li>{{ reservation.team.name }} at {{ reservation.court.name }}: {{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No reservations for this date.</p>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.js'></script>
+    <script>
+        function initializeCalendar() {
+            if (typeof FullCalendar !== 'undefined') {
+                const calendarEl = document.getElementById('calendar');
+                if (calendarEl) {
+                    try {
+                        const calendar = new FullCalendar.Calendar(calendarEl, {
+                            initialView: 'dayGridMonth',
+                            events: '/calendar/reservations/',
+                            dateClick: function(info) {
+                                window.location.href = "?date=" + info.dateStr;
+                            },
+                             eventDidMount: function(info) {
+                                console.log("Event mounted:", info.event.title);
+                            },
+                            loading: function(isLoading) {
+                                if (isLoading) {
+                                    console.log("Loading events...");
+                                } else {
+                                    console.log("Events loaded.");
+                                }
+                            }
+                        });
+                        calendar.render();
+                    } catch (error) {
+                        console.error("FullCalendar initialization error:", error);
+                    }
+                } else {
+                    console.error("Calendar element not found!");
+                }
+            } else {
+                console.log("FullCalendar not yet loaded. Trying again...");
+                setTimeout(initializeCalendar, 100);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCalendar);
+        } else {
+            initializeCalendar();
+        }
+    </script>
+{% endblock %}

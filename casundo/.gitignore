@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+venv/  # Or the name of your virtual environment folder
+static/
+media/
+db.sqlite3
+*.env
+.vscode/

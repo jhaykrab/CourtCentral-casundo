@@ -1,0 +1,382 @@
+{% extends 'myApp/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <h1>Create Reservation</h1>
+
+    <div id="success-message" class="alert alert-success" style="display: none;">
+        Reservation created successfully!
+    </div>
+    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+
+    <div class="mb-3">
+        <label for="id_team" class="form-label">Team</label>
+        <select class="form-select" id="id_team" name="team" required>
+            <option value="">Select Team</option>
+            {% for team in teams %}
+                <option value="{{ team.id }}">{{ team.name }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="mt-2">
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addTeamModal">
+                Add New Team
+            </button>
+            <button type="button" class="btn btn-warning edit-team-btn" data-bs-toggle="modal" data-bs-target="#editTeamModal" disabled>
+                Edit Selected Team
+            </button>
+            <button type="button" class="btn btn-danger delete-team-btn" data-bs-toggle="modal" data-bs-target="#deleteTeamModal" disabled>
+                Delete Selected Team
+            </button>
+        </div>
+    </div>
+
+    <form id="reservation-form" method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary">Reserve</button>
+    </form>
+
+    <div class="modal fade" id="addTeamModal" tabindex="-1" aria-labelledby="addTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="add-team-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger add-team-error" style="display:none;"></div> <div class="mb-3">
+                            <label for="teamName" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="teamName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactPerson" class="form-label">Contact Person</label>
+                            <input type="text" class="form-control" id="contactPerson" name="contact_person" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactEmail" class="form-label">Contact Email</label>
+                            <input type="email" class="form-control" id="contactEmail" name="contact_email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactPhone" class="form-label">Contact Phone</label>
+                            <input type="text" class="form-control" id="contactPhone" name="contact_phone" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save Team</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="edit-team-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                         <div class="alert alert-danger edit-team-error" style="display:none;"></div>
+                        <input type="hidden" id="editTeamId">
+                        <div class="mb-3">
+                            <label for="editTeamName" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="editTeamName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactPerson" class="form-label">Contact Person</label>
+                            <input type="text" class="form-control" id="editContactPerson" name="contact_person" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactEmail" class="form-label">Contact Email</label>
+                            <input type="email" class="form-control" id="editContactEmail" name="contact_email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactPhone" class="form-label">Contact Phone</label>
+                            <input type="text" class="form-control" id="editContactPhone" name="contact_phone" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteTeamModal" tabindex="-1" aria-labelledby="deleteTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Team</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this team?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirm-delete-team">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const teamDropdown = document.getElementById("id_team");
+    const editTeamBtn = document.querySelector(".edit-team-btn");
+    const deleteTeamBtn = document.querySelector(".delete-team-btn");
+
+    const addTeamModal = new bootstrap.Modal(document.getElementById("addTeamModal"));
+    const editTeamModal = new bootstrap.Modal(document.getElementById("editTeamModal"));
+    const deleteTeamModal = new bootstrap.Modal(document.getElementById("deleteTeamModal"));
+
+    // Enable/Disable Edit and Delete buttons
+    teamDropdown.addEventListener("change", function () {
+        editTeamBtn.disabled = !this.value;
+        deleteTeamBtn.disabled = !this.value;
+    });
+
+    // Add Team Form Handling
+const addTeamForm = document.getElementById("add-team-form");
+const addTeamErrorDiv = document.querySelector("#addTeamModal .add-team-error");
+
+addTeamForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    const data = {  // Create a plain JavaScript object
+        name: document.getElementById("teamName").value,
+        contact_person: document.getElementById("contactPerson").value,
+        contact_email: document.getElementById("contactEmail").value,
+        contact_phone: document.getElementById("contactPhone").value,
+    };
+
+    fetch('/create_team/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': "{{ csrf_token }}",
+            'Content-Type': 'application/json' // Important: Set Content-Type
+        },
+        body: JSON.stringify(data) // Send JSON string
+    })
+    .then(response => {
+        if (!response.ok) {
+            console.error("HTTP Error:", response.status, response.statusText);
+            return response.text().then(text => {
+                console.error("Response Text (HTML or Error):", text);
+                throw new Error("HTTP Error: " + response.status + " - " + text);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === "success") {
+            addTeamModal.hide();
+            addTeamForm.reset();
+            addTeamErrorDiv.style.display = "none";
+
+            const newOption = document.createElement('option');
+            newOption.value = data.team_id;
+            newOption.text = data.team_name;
+            teamDropdown.appendChild(newOption);
+            teamDropdown.value = data.team_id;
+
+        } else {
+            console.error("Server Error (JSON):", data.message);
+            addTeamErrorDiv.style.display = "block";
+            addTeamErrorDiv.textContent = data.message || "Failed to add team.";
+        }
+    })
+    .catch(error => {
+        console.error("Fetch Error:", error);
+        addTeamErrorDiv.style.display = "block";
+        addTeamErrorDiv.textContent = "An error occurred. Please try again.";
+    });
+});
+
+    // Edit Team Form Handling (Corrected)
+    const editTeamForm = document.getElementById("edit-team-form");
+    const editTeamErrorDiv = document.querySelector("#editTeamModal .edit-team-error");
+
+    editTeamBtn.addEventListener("click", function () {
+        const selectedTeamId = teamDropdown.value;
+        if (!selectedTeamId) return;
+
+        fetch(`/get_team_details/${selectedTeamId}/`)
+            .then(response => {
+                if (!response.ok) {
+                    console.error("HTTP Error:", response.status, response.statusText);
+                    return response.text().then(text => {
+                        console.error("Response Text:", text);
+                        throw new Error(text);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                    return;
+                }
+
+                document.getElementById("editTeamId").value = selectedTeamId;
+                document.getElementById("editTeamName").value = data.name;
+                document.getElementById("editContactPerson").value = data.contact_person;
+                document.getElementById("editContactEmail").value = data.contact_email || "";
+                document.getElementById("editContactPhone").value = data.contact_phone;
+
+                editTeamModal.show();
+            })
+            .catch(error => {
+                console.error("Error fetching team details:", error);
+                alert("Failed to load team details.");
+            });
+    });
+
+    editTeamForm.addEventListener("submit", function (event) { // Only ONE submit handler
+        event.preventDefault();
+        const teamId = document.getElementById("editTeamId").value;
+
+        const data = {
+            name: document.getElementById("editTeamName").value,
+            contact_person: document.getElementById("editContactPerson").value,
+            contact_email: document.getElementById("editContactEmail").value,
+            contact_phone: document.getElementById("editContactPhone").value,
+        };
+
+        fetch(`/update_team/${teamId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': "{{ csrf_token }}",
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.error("HTTP Error:", response.status, response.statusText);
+                return response.text().then(text => {
+                    console.error("Response Text:", text);
+                    throw new Error(text);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Edit Team Success Response:", data);
+
+            if (data.status === "success") {
+                editTeamModal.hide();
+                editTeamErrorDiv.style.display = "none";
+                alert("Team updated successfully!");
+
+                const selectedOption = teamDropdown.querySelector(`option[value="${teamId}"]`);
+                if (selectedOption) {
+                    selectedOption.text = data.updated_team.name; // Update dropdown text
+                }
+            } else {
+                console.error("Edit Team Server Error:", data.message);
+                editTeamErrorDiv.style.display = "block";
+                editTeamErrorDiv.textContent = data.message || "Failed to update team.";
+            }
+        })
+        .catch(error => {
+            console.error("Edit Team Fetch Error:", error);
+            editTeamErrorDiv.style.display = "block";
+            editTeamErrorDiv.textContent = "An error occurred. Please try again.";
+        });
+    });
+
+    editTeamForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const teamId = document.getElementById("editTeamId").value;
+        const formData = new FormData(editTeamForm);
+
+         fetch(`/update_team/${teamId}/`, { /* ... */ })
+    .then(response => {
+        if (!response.ok) {
+            console.error("HTTP Error:", response.status, response.statusText);
+            return response.text().then(text => { // Get the error body (important!)
+                console.error("Response Text (HTML or Error):", text); // Log the HTML or error
+                throw new Error("HTTP Error: " + response.status + " - " + text); // Throw with more info
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("Success Response Data:", data); // Log successful JSON data
+
+        if (data.status === "success") { // Check the status from JSON
+            // ... (handle successful update)
+        } else {
+            console.error("Server Error (JSON):", data.message); // Log the error message from JSON
+            editTeamErrorDiv.style.display = "block";
+            editTeamErrorDiv.textContent = data.message || "Failed to update team."; // Display to user
+        }
+    })
+    .catch(error => {
+        console.error("Fetch Error:", error); // Log the *full* error object
+        editTeamErrorDiv.style.display = "block";
+        editTeamErrorDiv.textContent = "An error occurred. Please try again.";
+    });
+});
+
+    // Delete Team Handling
+    const confirmDeleteBtn = document.getElementById("confirm-delete-team");
+
+    deleteTeamBtn.addEventListener("click", function () {
+        const selectedTeamId = teamDropdown.value;
+        confirmDeleteBtn.dataset.teamId = selectedTeamId; // Store ID in button
+    });
+
+
+    confirmDeleteBtn.addEventListener("click", function () {
+        const teamId = this.dataset.teamId;
+        if (!teamId) return;
+
+        fetch(`/delete_team/${teamId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': "{{ csrf_token }}"
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.error("HTTP Error:", response.status, response.statusText);
+                return response.text().then(text => {
+                    console.error("Response Text:", text);
+                    throw new Error(text);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === "success") {
+                deleteTeamModal.hide();
+                alert("Team deleted successfully!");
+
+                const optionToRemove = teamDropdown.querySelector(`option[value="${teamId}"]`);
+                if (optionToRemove) {
+                    teamDropdown.removeChild(optionToRemove);
+                    teamDropdown.value = "";
+                    editTeamBtn.disabled = true;
+                    deleteTeamBtn.disabled = true;
+                }
+            } else {
+                alert(data.message || "Failed to delete team.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred. Please try again.");
+        });
+    });
+});
+</script>
+
+
+{% endblock %}

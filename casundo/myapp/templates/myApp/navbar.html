@@ -1,5 +1,8 @@
 <header>
-      <a href="{% url 'home' %}">Home</a>
-      <a href="{% url 'about' %}">About</a>
-      <a href="{% url 'blog' %}">Blog</a>
+    <nav>
+        <a href="{% url 'home' %}" {% if request.resolver_match.view_name == 'home' %}class="active"{% endif %}>Home</a>
+        <a href="{% url 'register_court' %}" {% if request.resolver_match.view_name == 'register_court' %}class="active"{% endif %}>Register Court</a>
+        <a href="{% url 'list_courts' %}" {% if request.resolver_match.view_name == 'list_courts' %}class="active"{% endif %}>Court List</a>
+        <a href="{% url 'create_reservation' %}" {% if request.resolver_match.view_name == 'create_reservation' %}class="active"{% endif %}>Reserve Court</a>
+        <a href="{% url 'court_calendar' %}">Court Calendar</a>  </nav>
 </header>

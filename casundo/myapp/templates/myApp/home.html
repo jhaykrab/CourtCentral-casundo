@@ -1,10 +1,7 @@
 {% extends 'myApp/base.html' %}
 {% load static %}
-
+{% block title %}Home{% endblock %}
 {% block content %}
-
-    <h1>Hello World!</h1>
-
-<img class='cclogo' src="{% static 'images/ccLogo.png' %}">
-
+    <h1>Welcome to CourtCentral!</h1>
+    <img class='cclogo' src="{% static 'images/ccLogo.png' %}" alt="CourtCentral Logo">
 {% endblock content %}
