@@ -2,23 +2,24 @@
 {% load crispy_forms_tags %} {% load static %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1>Registered Courts</h1>
+<div class="container mt-5 mb-5 p-4 shadow-sm bg-white rounded add-court-container">
+    <h1 class="title-spacing">Registered Courts</h1>
 
     {% if messages %}
-       {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} position-fixed top-0 start-50 translate-middle-x mt-3" role="alert">
-            {{ message }}
+        <div class="container mt-3">
+            {% for message in messages %}
+                <div class="alert alert-dismissible fade show
+                            {% if message.tags == 'success' %}alert-success-custom
+                            {% elif message.tags == 'error' or message.tags == 'danger' %}alert-error-custom{% endif %}"
+                     role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
         </div>
-    {% endfor %}
-
     {% endif %}
 
-    <div class="mb-3">
-        <a href="{% url 'register_court' %}" class="btn btn-primary">Add Court</a>
-    </div>
-
-    {% if courts %}
+     {% if courts %}
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -37,16 +38,15 @@
                         <td>{{ court.location }}</td>
                         <td>{{ court.get_court_type_display }}</td>
                         <td>{{ court.get_description_display|truncatechars:100 }}</td>
-                           <td>
-                                {% if court.image %}
-                                    <a href="#" class="court-image-name" data-image-url="{{ court.image.url }}">
-                                        {{ court.image.name|cut:"courts/" }}
-                                    </a>
-                                {% else %}
-                                    No Image
-                                {% endif %}
-                            </td>
-
+                        <td>
+                            {% if court.image %}
+                                <a href="#" class="court-image-name" data-image-url="{{ court.image.url }}">
+                                    {{ court.image.name|cut:"courts/" }}
+                                </a>
+                            {% else %}
+                                No Image
+                            {% endif %}
+                        </td>
                         <td>
                             <button type="button" class="btn btn-sm btn-warning edit-court"
                                 data-court-id="{{ court.id }}"
@@ -68,7 +68,12 @@
     {% else %}
         <p>No courts have been registered yet.</p>
     {% endif %}
+
+    <!-- Add Court Button Sticks to Bottom-Right -->
+<div class="add-court-button">
+    <a href="{% url 'register_court' %}" class="btn custom-add-court px-4 py-2 shadow">Add Court</a>
 </div>
+
 
 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -125,126 +130,129 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-    const editButtons = document.querySelectorAll('.edit-court');
-    const deleteButtons = document.querySelectorAll('.delete-court');
+        const editButtons = document.querySelectorAll('.edit-court');
+        const deleteButtons = document.querySelectorAll('.delete-court');
 
-    const editModal = document.getElementById('editModal');
-    const editForm = document.getElementById('editForm');
-    const editCourtId = document.getElementById('editCourtId');
-    const editFormFields = document.getElementById('editFormFields');
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+        const editCourtId = document.getElementById('editCourtId');
+        const editFormFields = document.getElementById('editFormFields');
 
-    const deleteModal = document.getElementById('deleteModal');
-    const deleteCourtName = document.getElementById('deleteCourtName');
-    const confirmDelete = document.getElementById('confirmDelete');
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteCourtName = document.getElementById('deleteCourtName');
+        const confirmDelete = document.getElementById('confirmDelete');
 
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-    // ✅ SUCCESS & ERROR MESSAGE AUTO-DISMISS (1s)
-    const messages = document.querySelectorAll('.alert');
-    messages.forEach(msg => {
-        const closeBtn = document.createElement('button');
-        closeBtn.innerHTML = '&times;';
-        closeBtn.className = 'btn-close';
-        closeBtn.onclick = () => msg.remove();
-        msg.appendChild(closeBtn);
+         // ✅ SUCCESS & ERROR MESSAGE AUTO-DISMISS (1s)
+        const messages = document.querySelectorAll('.alert');
+        messages.forEach(msg => {
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'btn-close';
+            closeBtn.onclick = () => msg.remove();
+            msg.appendChild(closeBtn);
 
-        setTimeout(() => msg.remove(), 2000); // Auto-hide after 1 second
-    });
-
-
+            setTimeout(() => msg.remove(), 2000); // Auto-hide after 1 second
+        });
 
 
-    // ✅ EDIT COURT FUNCTIONALITY
-    editButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const courtId = button.dataset.courtId;
-            const courtName = button.dataset.courtName;
-            const courtLocation = button.dataset.courtLocation;
-            const courtType = button.dataset.courtType;
-            const courtDescription = button.dataset.courtDescription;
-            const courtImage = button.dataset.courtImage;
+        // ✅ EDIT COURT FUNCTIONALITY
+        editButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const courtId = button.dataset.courtId;
 
-            editCourtId.value = courtId;
-            editFormFields.innerHTML = '<p>Loading...</p>'; // Show loading text
+                editCourtId.value = courtId;
+                editFormFields.innerHTML = '<p>Loading...</p>'; // Show loading text
 
-            fetch(`/edit_court_form/${courtId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.form_html) {
-                        editFormFields.innerHTML = data.form_html;
-
-                        // Populate fields *after* inserting the form HTML
-                        document.querySelector('[name="name"]').value = courtName;
-                        document.querySelector('[name="location"]').value = courtLocation;
-                        document.querySelector('[name="court_type"]').value = courtType;
-                        document.querySelector('[name="description"]').value = courtDescription;
-
-                        const imagePreview = document.getElementById('image-preview');
-                        if (courtImage && imagePreview) {
-                            imagePreview.src = courtImage;
-                            imagePreview.style.display = 'block';
-                        } else if (imagePreview) {
-                            imagePreview.style.display = 'none';
+                fetch(`/edit_court_form/${courtId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.form_html) {
+                            editFormFields.innerHTML = data.form_html;
+                        } else {
+                            editFormFields.innerHTML = '<p>Error loading form.</p>';
                         }
-                    } else {
+                    })
+                    .catch(error => {
+                        console.error('Error fetching form:', error);
                         editFormFields.innerHTML = '<p>Error loading form.</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching form:', error);
-                    editFormFields.innerHTML = '<p>Error loading form.</p>';
-                });
+                    });
+            });
+        });
+
+        // ✅ FORM SUBMISSION FOR EDITING COURT
+        editForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const formData = new FormData(editForm); // Collect form data
+
+            fetch(`/edit_court/${editCourtId.value}/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken // Include CSRF token
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload(); // Reload the page to see changes
+                } else {
+                    alert('Error saving changes.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving changes.');
+            });
+        });
+
+        // ✅ DELETE COURT FUNCTIONALITY
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const courtId = button.dataset.courtId;
+                const courtName = button.dataset.courtName;
+
+                deleteCourtName.textContent = courtName;
+
+                confirmDelete.onclick = function () {
+                    fetch(`/delete_court/${courtId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json'
+                        },
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Error deleting court.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred.');
+                    });
+                };
+            });
+        });
+
+        // ✅ IMAGE MODAL FUNCTIONALITY
+        document.querySelectorAll('.court-image-name').forEach(imgLink => {
+            imgLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                const imageUrl = this.dataset.imageUrl;
+
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImage');
+                modalImg.src = imageUrl;
+
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+            });
         });
     });
-
-
-    // ✅ DELETE COURT FUNCTIONALITY
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const courtId = button.dataset.courtId;
-            const courtName = button.dataset.courtName;
-
-            deleteCourtName.textContent = courtName;
-
-            confirmDelete.onclick = function () {
-                fetch(`/delete_court/${courtId}/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'Content-Type': 'application/json'
-                    },
-                })
-                .then(response => {
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        alert('Error deleting court.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred.');
-                });
-            };
-        });
-    });
-
-    // ✅ IMAGE MODAL FUNCTIONALITY
-    document.querySelectorAll('.court-image-name').forEach(imgLink => {
-        imgLink.addEventListener('click', function (event) {
-            event.preventDefault();
-            const imageUrl = this.dataset.imageUrl;
-
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImage');
-            modalImg.src = imageUrl;
-
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
-        });
-    });
-});
-
 
 </script>
 {% endblock %}
