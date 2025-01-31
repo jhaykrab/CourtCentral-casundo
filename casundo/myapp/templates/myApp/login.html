@@ -4,91 +4,85 @@
 {% block title %}{% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %} | CourtCentral{% endblock %}
 
 {% block content %}
-<div class="flex items-center justify-center min-h-[80vh] py-8">
-    <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-        <div class="text-center mb-8">
-            <img src="{% static 'images/ccLogo.png' %}" alt="CourtCentral Logo" class="h-16 mx-auto mb-4">
-            <h2 class="text-2xl font-bold text-gray-700">
-                {% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %}
+<div class="auth-container {% if mode == 'login' %}auth-container-login{% endif %}">
+    <div class="auth-card {% if mode == 'login' %}auth-card-narrow{% endif %}">
+        <div class="auth-header">
+            <img src="{% static 'images/ccLogo.png' %}" alt="CourtCentral Logo" class="auth-logo-left">
+            <h2 class="auth-title-centered {% if mode == 'login' %}auth-title-left{% endif %}">
+                {% if mode == 'login' %}Sign In{% else %}<span class="auth-title-centered">Sign Up</span>{% endif %}
             </h2>
         </div>
 
-        <form method="POST" enctype="multipart/form-data" action="{% if mode == 'login' %}{% url 'login' %}{% else %}{% url 'signup' %}{% endif %}">
+        <form method="POST" enctype="multipart/form-data" action="{% if mode == 'login' %}{% url 'login' %}{% else %}{% url 'signup' %}{% endif %}" class="auth-form">
             {% csrf_token %}
-            
+
             {% if messages %}
                 {% for message in messages %}
-                    <div class="mb-4 p-3 rounded {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    <div class="auth-message {% if message.tags == 'error' %}auth-message-error{% else %}auth-message-success{% endif %}">
                         {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
 
-            <div class="space-y-4">
-                <!-- Username field -->
-                <div>
-                    <label class="block text-gray-600 text-sm font-medium mb-1">Username</label>
-                    <input type="text" name="username" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <div class="auth-fields {% if mode == 'signup' %}auth-fields-two-column{% endif %}">
+                <!-- Username or Email field -->
+                <div class="auth-field">
+                    <label class="auth-label">
+                        {% if mode == 'login' %}Username or Email{% else %}Username{% endif %}*
+                    </label>
+                    <input type="text" name="username_or_email" required class="auth-input">
                 </div>
 
                 {% if mode == 'signup' %}
                     <!-- Email field - only show for signup -->
-                    <div>
-                        <label class="block text-gray-600 text-sm font-medium mb-1">Email</label>
-                        <input type="email" name="email" required
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="auth-field">
+                        <label class="auth-label">Email</label>
+                        <input type="email" name="email" required class="auth-input">
                     </div>
                 {% endif %}
 
                 <!-- Password field -->
-                <div>
-                    <label class="block text-gray-600 text-sm font-medium mb-1">Password</label>
-                    <input type="password" name="password" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <div class="auth-field">
+                    <label class="auth-label">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" name="password" id="password" required class="auth-input">
+                        <span class="password-toggle" onclick="togglePasswordVisibility()">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
                 </div>
 
                 {% if mode == 'signup' %}
                     <!-- Additional signup fields -->
-                    <div>
-                        <label class="block text-gray-600 text-sm font-medium mb-1">Confirm Password</label>
-                        <input type="password" name="confirm_password" required
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="auth-field">
+                        <label class="auth-label">Phone Number</label>
+                        <input type="tel" name="phone_number" class="auth-input">
                     </div>
 
-                    <div>
-                        <label class="block text-gray-600 text-sm font-medium mb-1">Phone Number</label>
-                        <input type="tel" name="phone_number"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="auth-field">
+                        <label class="auth-label">Address</label>
+                        <textarea name="address" rows="2" class="auth-input"></textarea>
                     </div>
 
-                    <div>
-                        <label class="block text-gray-600 text-sm font-medium mb-1">Address</label>
-                        <textarea name="address" rows="2"
-                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-600 text-sm font-medium mb-1">Profile Picture</label>
-                        <input type="file" name="profile_picture" accept="image/*"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <div class="auth-field">
+                        <label class="auth-label">Profile Picture</label>
+                        <input type="file" name="profile_picture" accept="image/*" class="auth-input">
                     </div>
                 {% endif %}
             </div>
 
-            <button type="submit" 
-                    class="w-full mt-6 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition duration-200">
+            <button type="submit" class="auth-button">
                 {% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %}
             </button>
         </form>
 
-        <p class="mt-6 text-center text-gray-600">
+        <p class="auth-footer">
             {% if mode == 'login' %}
                 <span>Don't have an account?</span>
-                <a href="{% url 'signup' %}" class="text-blue-600 hover:text-blue-700 font-medium ml-1">Sign Up</a>
+                <a href="{% url 'signup' %}" class="auth-link">Sign Up</a>
             {% else %}
                 <span>Already have an account?</span>
-                <a href="{% url 'login' %}" class="text-blue-600 hover:text-blue-700 font-medium ml-1">Sign In</a>
+                <a href="{% url 'login' %}" class="auth-link">Sign In</a>
             {% endif %}
         </p>
     </div>
@@ -116,6 +110,21 @@
             button.innerText = "Sign Up";
             toggleText.innerText = "Already have an account?";
             toggleLink.innerText = "Sign In";
+        }
+    }
+
+    function togglePasswordVisibility() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.querySelector('.password-toggle i');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
         }
     }
 </script>

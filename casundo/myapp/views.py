@@ -23,9 +23,20 @@ def home(request):
 @csrf_protect
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
+        username_or_email = request.POST.get('username_or_email')  # Updated field name
         password = request.POST.get('password')
 
+        # Check if the input is an email
+        if '@' in username_or_email:
+            try:
+                user = User.objects.get(email=username_or_email)
+                username = user.username
+            except User.DoesNotExist:
+                username = None
+        else:
+            username = username_or_email
+
+        # Authenticate the user
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -33,7 +44,7 @@ def login_view(request):
             messages.success(request, 'Successfully logged in!')
             return redirect('home')
         else:
-            messages.error(request, 'Invalid username or password.')
+            messages.error(request, 'Invalid username/email or password.')
 
     return render(request, 'myApp/login.html', {
         'mode': 'login',

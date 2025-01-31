@@ -1,29 +1,48 @@
 {% extends 'myApp/base.html' %}
 {% load crispy_forms_tags %}
 
+
 {% block title %}{% if edit_mode %}Edit Court{% else %}Register Court{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h1 class="card-title">{% if edit_mode %}Edit Court{% else %}Register Court{% endif %}</h1>
+        <div class="col-md-10"> <!-- Wider container for two columns -->
+            <div class="card shadow-lg"> <!-- Added shadow for depth -->
+                <div class="card-header text-white"> <!-- Styled header -->
+                    <h1 class="card-title mb-0">{% if edit_mode %}Edit Court{% else %}Register Court{% endif %}</h1>
                 </div>
                 <div class="card-body">
                     <form method="post" enctype="multipart/form-data" class="form-horizontal">
                         {% csrf_token %}
 
                         {% if court.image %}  {# Display current image if editing #}
-                            <div class="mb-3">
-                                <img src="{{ court.image.url }}" alt="Current Court Image" width="200">
+                            <div class="mb-4 text-center"> <!-- Centered the image -->
+                                <img src="{{ court.image.url }}" alt="Current Court Image" class="img-fluid rounded" style="max-width: 100%; height: auto;">
                             </div>
                         {% endif %}
 
-                        {{ form|crispy }}
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">{% if edit_mode %}Save Changes{% else %}Register Court{% endif %}</button>
+                        <div class="row"> <!-- Two-column layout -->
+                            <div class="col-md-6">
+                                {% for field in form %}
+                                    {% if forloop.counter0|divisibleby:2 %} <!-- First column fields -->
+                                        {{ field|as_crispy_field }}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {% for field in form %}
+                                    {% if not forloop.counter0|divisibleby:2 %} <!-- Second column fields -->
+                                        {{ field|as_crispy_field }}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4"> <!-- Centered submit button -->
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                {% if edit_mode %}Save Changes{% else %}Register Court{% endif %}
+                            </button>
                         </div>
                     </form>
                 </div>

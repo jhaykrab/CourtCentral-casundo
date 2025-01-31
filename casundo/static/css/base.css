@@ -1,90 +1,152 @@
 /* General Styles */
 body {
     margin: 0;
-    font-family: 'Roboto', Arial, sans-serif; /* Clean, modern font */
-    background-color: #f8f9fa; /* Light background for readability */
-    color: #333; /* Neutral text color */
-    line-height: 1.6; /* Comfortable text spacing */
-
+    font-family: 'Roboto', Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
 }
 
 h1 {
-    color: #2C3E50; /* Modern dark color */
+    color: #2C3E50;
     font-size: 32px;
     font-weight: bold;
     margin-bottom: 20px;
-    text-align: center; /* Center headings */
+    text-align: center;
 }
 
 /* Navbar Styles */
 header {
     display: flex;
-    justify-content: center; /* Center-align links */
+    justify-content: space-between;
     align-items: center;
-    background-color: #2C3E50; /* Dark modern background */
-    padding: 15px 0; /* Spacing inside navbar */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for structure */
+    background-color: #2C3E50;
+    padding: 15px 20px;
+
 }
 
-header a {
-    text-decoration: none; /* Remove underline from links */
-    color: #ECF0F1; /* Light text for contrast */
-    font-size: 16px; /* Standard readable size */
-    font-weight: 500; /* Medium weight for clean look */
-    padding: 10px 15px; /* Spacing around links */
-    margin: 0 10px; /* Space between navbar links */
-    transition: color 0.3s ease; /* Smooth transition for hover effects */
+/* Navbar Container */
+.navbar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
-header a:hover {
-    color: #1ABC9C; /* Bright green accent on hover */
+/* Logo and Welcome Message */
+.navbar-logo {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-logo-img {
+    height: 80px;
+    width: auto;
+}
+
+.navbar-welcome {
+    flex: 1;
+    text-align: left;
+    margin-left: 1.5vw;
+    padding-left: 5px; /* Reduce space between logo and text */
+    color: #ECF0F1;
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+/* Centered Navbar Links */
+.navbar-links {
+    flex: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.navbar-links a {
+    text-decoration: none;
+    font-family: Roboto Condensed, sans-serif;
+    color: #ff7f00;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 15px;
+    margin: 0 10px;
+    transition: color 0.3s ease;
+}
+
+.navbar-links a:hover {
+    color: #ffe7c2;
+}
+
+/* Logout Button */
+.navbar-logout {
+    flex: 1;
+    text-align: right;
+}
+
+.navbar-logout a {
+    text-decoration: none;
+    color: #ECF0F1;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 10px 15px;
+    transition: color 0.3s ease;
+}
+
+.navbar-logout a:hover {
+    color: #f46060;
+}
+
+.navbar-logout .fa-sign-out-alt {
+    margin-right: 5px;
 }
 
 /* Responsive Navbar */
 @media (max-width: 768px) {
     header {
-        flex-direction: column; /* Stack links vertically on small screens */
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
-
-    header a {
-        margin: 10px 0; /* Space between vertical links */
+    .navbar-logo {
+        justify-content: center;
+    }
+    .navbar-links {
+        margin-top: 10px;
     }
 }
 
 /* Image Styling */
 .cclogo {
+    width: 150px;
     height: auto;
-    width: 150px; /* Adjusted for a cleaner and consistent size */
     display: block;
-    margin: 20px auto; /* Center the image */
-    border-radius: 10px; /* Optional for rounded edges */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Blog Post Styling */
 .post-entry {
-    background-color: #ffffff; /* White background for contrast */
+    background-color: #ffffff;
     padding: 20px;
-    margin: 20px auto; /* Margin between posts */
-    border-radius: 8px; /* Smooth edges for a modern look */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Shadow for a card-like effect */
-    max-width: 800px; /* Restrict post width for better readability */
-    transition: transform 0.2s ease, box-shadow 0.2s ease; /* Smooth hover effect */
+    margin: 20px auto;
+    border-radius: 8px;
+    max-width: 800px;
+    transition: transform 0.2s ease;
 }
 
 .post-entry:hover {
-    transform: translateY(-5px); /* Lift effect on hover */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
+    transform: translateY(-5px);
 }
 
 .post-entry h2 {
     font-size: 24px;
     margin-bottom: 10px;
-    color: #2C3E50; /* Heading color */
+    color: #2C3E50;
 }
 
 .post-entry p {
-    color: #555; /* Softer text color for the body */
+    color: #555;
     font-size: 16px;
 }
 
@@ -96,10 +158,10 @@ header a:hover {
 }
 
 .post-entry h2 a:hover {
-    color: #16a085; /* Slightly darker green on hover */
+    color: #16a085;
 }
 
-/* Footer (Optional if you plan to add one) */
+/* Footer */
 footer {
     text-align: center;
     padding: 10px 15px;
