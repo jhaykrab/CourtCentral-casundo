@@ -30,11 +30,17 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',  # Make sure this is here
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# CSRF Settings
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # False because we need to access it via JavaScript
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_NAME = 'csrftoken'
 
 ROOT_URLCONF = 'casundo.urls'
 
@@ -60,6 +66,8 @@ WSGI_APPLICATION = 'casundo.wsgi.application'
 LOGIN_URL = 'login'  # Where to redirect if user is not authenticated
 LOGIN_REDIRECT_URL = 'home'  # Where to redirect after successful login
 LOGOUT_REDIRECT_URL = 'login'  # Where to redirect after logout
+
+
 
 
 # Database

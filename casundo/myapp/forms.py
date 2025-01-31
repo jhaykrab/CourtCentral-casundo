@@ -67,11 +67,19 @@ class CourtForm(forms.ModelForm):
 
 
 class ReservationForm(forms.ModelForm):
+    PAYMENT_CHOICES = [
+        ('INSTALLMENT', 'Installment Payment'),
+        ('FULL', 'Full Payment'),
+    ]
+    
     team = forms.ModelChoiceField(queryset=Team.objects.all(), required=True, label="Team")
+    payment_type = forms.ChoiceField(choices=PAYMENT_CHOICES, required=True, widget=forms.RadioSelect)
+    payment_amount = forms.DecimalField(max_digits=10, decimal_places=2, required=True, widget=forms.NumberInput(attrs={'step': '0.01'}))
+    downpayment = forms.DecimalField(max_digits=10, decimal_places=2, required=False, widget=forms.NumberInput(attrs={'step': '0.01'}))
 
     class Meta:
         model = Reservation
-        fields = [ 'team', 'court', 'date', 'start_time', 'end_time']
+        fields = ['team', 'court', 'date', 'start_time', 'end_time', 'payment_type', 'payment_amount', 'downpayment']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),
             'start_time': forms.TimeInput(attrs={'type': 'time'}),
@@ -85,6 +93,15 @@ class ReservationForm(forms.ModelForm):
         date = cleaned_data.get('date')
         court = cleaned_data.get('court')
         team = cleaned_data.get('team')
+        payment_type = cleaned_data.get('payment_type')
+        payment_amount = cleaned_data.get('payment_amount')
+        downpayment = cleaned_data.get('downpayment')
+
+        if payment_type == 'INSTALLMENT' and not downpayment:
+            raise forms.ValidationError("Downpayment is required for installment payment")
+        
+        if payment_type == 'INSTALLMENT' and downpayment >= payment_amount:
+            raise forms.ValidationError("Downpayment cannot be greater than or equal to total amount")
 
         if start_time and end_time and start_time >= end_time:
             raise forms.ValidationError("Start time must be before end time.")

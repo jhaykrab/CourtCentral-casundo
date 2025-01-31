@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -7,101 +10,174 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.template.loader import render_to_string
-from .models import Court, Reservation, Team, UserProfile
+from .models import Court, Reservation, Team, UserProfile, ReservationStatus
 from .forms import ReservationForm, CourtForm, SignUpForm
-from datetime import datetime
+from django.core.exceptions import ValidationError
+from django.utils import timezone 
+
 import json
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+
+@ensure_csrf_cookie
 def home(request):
     return render(request, 'myApp/home.html')
 
+@ensure_csrf_cookie
+def load_auth_form(request, mode):
+    return render(request, 'myApp/auth_form.html', {'mode': mode})
 
-@csrf_protect
+
+@ensure_csrf_cookie
 def login_view(request):
     if request.method == 'POST':
-        username_or_email = request.POST.get('username_or_email')  # Updated field name
+        username_or_email = request.POST.get('username_or_email')
         password = request.POST.get('password')
-
-        # Check if the input is an email
-        if '@' in username_or_email:
+        
+        # Try to authenticate with username
+        user = authenticate(username=username_or_email, password=password)
+        
+        # If authentication failed, try with email
+        if user is None:
             try:
                 user = User.objects.get(email=username_or_email)
-                username = user.username
+                user = authenticate(username=user.username, password=password)
             except User.DoesNotExist:
-                username = None
-        else:
-            username = username_or_email
-
-        # Authenticate the user
-        user = authenticate(request, username=username, password=password)
+                user = None
 
         if user is not None:
             login(request, user)
-            messages.success(request, 'Successfully logged in!')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('home')
         else:
-            messages.error(request, 'Invalid username/email or password.')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Invalid credentials. Please try again.'
+                })
+            # Handle regular form submission error
+            messages.error(request, 'Invalid credentials. Please try again.')
+            return render(request, 'myApp/login.html', {'mode': 'login'})
+    
+    return render(request, 'myApp/login.html', {'mode': 'login'})
 
-    return render(request, 'myApp/login.html', {
-        'mode': 'login',
-        'hide_navbar': True  # Add this line
-    })
+@login_required
+def update_profile(request):
+    if request.method == 'POST':
+        try:
+            user = request.user
+            profile = user.profile
+            
+            # Handle password change
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            
+            if current_password and new_password:
+                # Verify current password
+                if not user.check_password(current_password):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Current password is incorrect'
+                    }, status=400)
+                
+                # Set new password
+                user.set_password(new_password)
+            
+            # Update user fields
+            user.username = request.POST.get('username')
+            user.email = request.POST.get('email')
+            user.save()
+            
+            # Update profile fields
+            profile.phone_number = request.POST.get('phone_number')
+            profile.address = request.POST.get('address')
+            
+            # Handle profile picture
+            if request.FILES.get('profile_picture'):
+                profile.profile_picture = request.FILES['profile_picture']
+            
+            profile.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Profile updated successfully',
+                'username': user.username
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
 @csrf_protect
 def signup_view(request):
     if request.method == 'POST':
-        form = SignUpForm(request.POST, request.FILES)
-        if form.is_valid():
-            # Get form data
-            username = form.cleaned_data['username']
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            
+        # Get form data
+        username = request.POST.get('username_or_email')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        phone_number = request.POST.get('phone_number')
+        address = request.POST.get('address')
+        profile_picture = request.FILES.get('profile_picture')
+
+        try:
             # Check if username or email already exists
             if User.objects.filter(username=username).exists():
-                messages.error(request, 'Username already exists.')
-                return render(request, 'myApp/login.html', {'form': form, 'mode': 'signup'})
+                messages.error(request, 'Username already exists')
+                return render(request, 'myApp/login.html', {'mode': 'signup'})
             
             if User.objects.filter(email=email).exists():
-                messages.error(request, 'Email already exists.')
-                return render(request, 'myApp/login.html', {'form': form, 'mode': 'signup'})
+                messages.error(request, 'Email already exists')
+                return render(request, 'myApp/login.html', {'mode': 'signup'})
+
+            # Create user
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password
+            )
+
+            # Create or update profile with the provided data
+            UserProfile.get_or_create_profile(
+                user,
+                phone_number=phone_number,
+                address=address,
+                profile_picture=profile_picture,
+                created_at=timezone.now()
+            )
+
+            # Log the user in
+            login(request, user)
+
+            # Handle AJAX request
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             
-            try:
-                # Create user
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password
-                )
-                
-                # Update profile
-                profile = user.profile
-                profile.phone_number = form.cleaned_data.get('phone_number')
-                profile.address = form.cleaned_data.get('address')
-                if form.cleaned_data.get('profile_picture'):
-                    profile.profile_picture = form.cleaned_data['profile_picture']
-                profile.save()
-                
-                # Log the user in
-                login(request, user)
-                messages.success(request, 'Account created successfully!')
-                return redirect('home')
-                
-            except Exception as e:
-                messages.error(request, f'Error creating account: {str(e)}')
-                return render(request, 'myApp/login.html', {'form': form, 'mode': 'signup'})
-    else:
-        form = SignUpForm()
-        
-        return render(request, 'myApp/login.html', {
-            'form': form,
-            'mode': 'signup',
-            'hide_navbar': True  # Add this line
-        })
+            # Redirect to home page for normal request
+            messages.success(request, 'Account created successfully!')
+            return redirect('home')
+
+        except Exception as e:
+            # If there was an error, delete the user if it was created
+            if 'user' in locals():
+                user.delete()
+            
+            messages.error(request, str(e))
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': str(e)
+                })
+            return render(request, 'myApp/login.html', {'mode': 'signup'})
+
+    # If GET request, show signup form
+    return render(request, 'myApp/login.html', {'mode': 'signup'})
 
 @login_required
 def logout_view(request):
@@ -116,7 +192,9 @@ def register_court(request):
     if request.method == 'POST':
         form = CourtForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            court = form.save(commit=False)
+            court.user = request.user
+            court.save()
             messages.success(request, "Court registered successfully!")
             return redirect('list_courts')
         else:
@@ -128,7 +206,7 @@ def register_court(request):
 
 @login_required
 def list_courts(request):
-    courts = Court.objects.all()
+    courts = Court.objects.filter(user=request.user)
     return render(request, 'myApp/list_courts.html', {'courts': courts})
 
 @login_required
@@ -141,7 +219,7 @@ def edit_court_form(request, court_id):
 
 @login_required
 def edit_court(request, court_id):
-    court = get_object_or_404(Court, pk=court_id)
+    court = get_object_or_404(Court, pk=court_id, user=request.user)
     if request.method == 'POST':
         print(f"Received POST data: {request.POST}")  # Debugging
         form = CourtForm(request.POST, request.FILES, instance=court)
@@ -160,7 +238,7 @@ def edit_court(request, court_id):
 def delete_court(request, court_id):
     if request.method == 'DELETE':
         try:
-            court = get_object_or_404(Court, pk=court_id)
+            court = get_object_or_404(Court, pk=court_id, user=request.user) 
             court.delete()
             messages.success(request, "Court deleted successfully!")
             return JsonResponse({'status': 'success'})
@@ -175,7 +253,7 @@ def delete_court(request, court_id):
 @login_required
 def get_team_details(request, team_id):
     try:
-        team = Team.objects.get(pk=team_id)
+        team = Team.objects.get(pk=team_id, user=request.user)
         return JsonResponse({
             'name': team.name,
             'contact_person': team.contact_person,
@@ -191,6 +269,7 @@ def create_team(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body.decode("utf-8"))
+            
             name = data.get('name')
             contact_person = data.get('contact_person')
             contact_email = data.get('contact_email')
@@ -259,7 +338,7 @@ def delete_team(request, team_id):
 
 @login_required
 def create_reservation(request):
-    teams = Team.objects.all()
+    teams = Team.objects.filter(user=request.user)
 
     if request.method == 'POST':
         form = ReservationForm(request.POST)
@@ -267,16 +346,34 @@ def create_reservation(request):
 
         if form.is_valid():
             reservation = form.save(commit=False)
+            reservation.user = request.user
 
             if selected_team_id:
                 reservation.team = get_object_or_404(Team, pk=selected_team_id)
 
             reservation.save()
+
+            # Create payment record
+            payment = ReservationStatus.objects.create(
+                user=request.user,
+                reservation=reservation,
+                amount=form.cleaned_data['payment_amount'],
+                downpayment=form.cleaned_data.get('downpayment'),
+                payment_status='PARTIAL' if form.cleaned_data['payment_type'] == 'INSTALLMENT' else 'FULL'
+            )
+
             messages.success(request, "Reservation created successfully!")
             return redirect(reverse('create_reservation'))
         else:
-            messages.error(request, "There was an error with your reservation.")
-            print(form.errors) # Print form errors for debugging
+            # Get all error messages and join them
+            error_messages = []
+            for field, errors in form.errors.items():
+                if field == '__all__':  # Non-field errors
+                    error_messages.extend([str(error) for error in errors])
+                else:
+                    error_messages.extend([f"{field}: {str(error)}" for error in errors])
+            
+            messages.error(request, " ".join(error_messages))
     else:
         form = ReservationForm()
         selected_team_id = None
@@ -296,85 +393,243 @@ def court_calendar(request):
     if selected_date_str:
         try:
             selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-            reservations = Reservation.objects.filter(date=selected_date).select_related('team', 'court')
+            reservations = Reservation.objects.filter(
+                date=selected_date,
+                user=request.user
+            ).select_related('team', 'court')
         except ValueError:
             pass
 
-    # Fetch all courts with their related reservations
-    courts = Court.objects.prefetch_related('reservations').all()
+    courts = Court.objects.filter(user=request.user).prefetch_related('reservations')
+    teams = Team.objects.filter(user=request.user)  # Add this line to get user's teams
 
     return render(request, 'myApp/court_calendar.html', {
         'reservations': reservations,
         'selected_date': selected_date,
-        'courts': courts,  # Pass courts to the template
+        'courts': courts,
+        'teams': teams,  # Add teams to context
     })
 
-@csrf_exempt
+@login_required
+def get_reservation_details(request, reservation_id):
+    try:
+        reservation = get_object_or_404(
+            Reservation.objects.select_related('reservation_status', 'team', 'court'),
+            id=reservation_id,
+            user=request.user
+        )
+        
+        # Create reservation status if it doesn't exist
+        if not hasattr(reservation, 'reservation_status'):
+            reservation_status = ReservationStatus.objects.create(
+                user=reservation.user,
+                reservation=reservation,
+                amount=400,
+                payment_status='PARTIAL',
+                court_status='UNUSED'
+            )
+        else:
+            reservation_status = reservation.reservation_status
+
+        data = {
+            'status': 'success',
+            'team': {
+                'id': reservation.team.id if reservation.team else None,
+                'name': reservation.team.name if reservation.team else 'No Team',
+                'contact_person': reservation.team.contact_person if reservation.team else '',
+                'contact_email': reservation.team.contact_email if reservation.team else '',
+                'contact_phone': reservation.team.contact_phone if reservation.team else ''
+            },
+            'court': {
+                'id': reservation.court.id,
+                'name': reservation.court.name,
+                'location': reservation.court.location if hasattr(reservation.court, 'location') else '',
+                'description': reservation.court.description if hasattr(reservation.court, 'description') else ''
+            },
+            'reservation': {
+                'date': reservation.date.strftime('%Y-%m-%d'),
+                'start_time': reservation.start_time.strftime('%H:%M'),
+                'end_time': reservation.end_time.strftime('%H:%M'),
+                'court_status': reservation_status.court_status
+            },
+            'payment': {
+                'status': reservation_status.payment_status,
+                'amount': str(reservation_status.amount),
+                'downpayment': str(reservation_status.downpayment) if reservation_status.downpayment else None,
+                'balance': str(reservation_status.amount - (reservation_status.downpayment or 0))
+            }
+        }
+        print("Data being sent:", data)  # For debugging
+        return JsonResponse(data)
+    except Exception as e:
+        print(f"Error in get_reservation_details: {str(e)}")  # For debugging
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+@login_required
 def get_reservation(request, reservation_id):
     try:
-        reservation = Reservation.objects.get(id=reservation_id)
+        reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
         data = {
             'status': 'success',
             'reservation': {
-                'team_id': reservation.team.id,
+                'team_id': reservation.team.id if reservation.team else None,
                 'court_id': reservation.court.id,
                 'date': reservation.date.strftime('%Y-%m-%d'),
-                'start_time': reservation.start_time.strftime('%H:%M:%S'),
-                'end_time': reservation.end_time.strftime('%H:%M:%S'),
+                'start_time': reservation.start_time.strftime('%H:%M'),
+                'end_time': reservation.end_time.strftime('%H:%M'),
             }
         }
         return JsonResponse(data)
-    except Reservation.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Reservation not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
 
 @login_required
+def update_reservation_status(request, reservation_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+            
+            if data['status_type'] == 'payment':
+                payment = reservation.payment
+                payment.payment_status = data['status']
+                payment.save()
+            elif data['status_type'] == 'court':
+                reservation.court_status = data['status']
+                reservation.save()
+                
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method'
+    }, status=405)
+
+@login_required
+def edit_reservation_page(request, reservation_id):
+    try:
+        reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+        teams = Team.objects.filter(user=request.user)
+        courts = Court.objects.filter(user=request.user)
+
+        context = {
+            'reservation': reservation,
+            'teams': teams,
+            'courts': courts,
+        }
+        return render(request, 'myApp/edit_reservation.html', context)
+    except Exception as e:
+        messages.error(request, f'Error loading reservation: {str(e)}')
+        return redirect('reservation_status')
+    
 @csrf_exempt
+@login_required
 def edit_reservation(request, reservation_id):
     if request.method == 'POST':
         try:
-            reservation = Reservation.objects.get(id=reservation_id)
-            reservation.team_id = request.POST.get('team')
-            reservation.court_id = request.POST.get('court')
-            reservation.date = request.POST.get('date')
-            reservation.start_time = request.POST.get('start_time')
-            reservation.end_time = request.POST.get('end_time')
-            reservation.save()
-            return JsonResponse({'status': 'success'})
-        except Reservation.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Reservation not found'}, status=404)
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+            data = json.loads(request.body)
+            reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+            reservation_status = reservation.reservation_status  # Updated from status to reservation_status
+            
+            # Update both statuses
+            if data.get('payment_status'):
+                reservation_status.payment_status = data['payment_status']
+            if data.get('court_status'):
+                reservation_status.court_status = data['court_status']
+            
+            reservation_status.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Status updated successfully'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+
+@csrf_exempt
+@login_required
+@require_http_methods(["DELETE"])
+def delete_reservation(request, reservation_id):
+    try:
+        reservation = get_object_or_404(Reservation, id=reservation_id, user=request.user)
+        reservation.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Reservation deleted successfully'
+        })
+    except Exception as e:
+        print(f"Error deleting reservation: {str(e)}")  # For debugging
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
 
 @login_required
-@csrf_exempt
-def delete_reservation(request, reservation_id):
-    if request.method == 'DELETE':
-        try:
-            reservation = Reservation.objects.get(id=reservation_id)
-            reservation.delete()
-            return JsonResponse({'status': 'success'})
-        except Reservation.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Reservation not found'}, status=404)
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=400)
+def reservation_status(request):
+    # Use select_related to efficiently fetch related data
+    reservations = Reservation.objects.select_related(
+        'user', 
+        'team', 
+        'court', 
+        'reservation_status'
+    ).filter(user=request.user).order_by('-date')
+
+    # Create missing reservation statuses if needed
+    for reservation in reservations:
+        if not hasattr(reservation, 'reservation_status'):
+            ReservationStatus.objects.create(
+                user=reservation.user,
+                reservation=reservation,
+                amount=400,  # Default amount
+                downpayment=0,  # Default downpayment
+                payment_status='PARTIAL',
+                court_status='UNUSED'
+            )
+
+    context = {
+        'reservations': reservations,
+    }
+    return render(request, 'myApp/reservation_status.html', context)
 
 @login_required
 def calendar_reservations(request):
     try:
-        reservations = Reservation.objects.select_related('team', 'court')
+        reservations = Reservation.objects.filter(
+            user=request.user
+        ).select_related('team', 'court')
+        
         events = []
-
         for reservation in reservations:
-            events.append({
-                'id': reservation.id,  # Include the reservation ID
-                'title': f"{reservation.team.name if reservation.team else 'No Team'} ({reservation.court.name if reservation.court else 'No Court'})",
-                'start': reservation.date.isoformat() + 'T' + reservation.start_time.strftime('%H:%M:%S'),
-                'end': reservation.date.isoformat() + 'T' + reservation.end_time.strftime('%H:%M:%S'),
-                'description': reservation.court.description if reservation.court else 'No Description',
-                'court_name': reservation.court.name if reservation.court else 'No Court',
+            event = {
+                'id': reservation.id,
+                'title': f"{reservation.team.name if reservation.team else 'No Team'} ({reservation.court.name})",
+                'start': f"{reservation.date.isoformat()}T{reservation.start_time.strftime('%H:%M:%S')}",
+                'end': f"{reservation.date.isoformat()}T{reservation.end_time.strftime('%H:%M:%S')}",
+                'description': reservation.court.description,
+                'court_id': reservation.court.id,
+                'court_name': reservation.court.name,
+                'team_id': reservation.team.id if reservation.team else None,
                 'team_name': reservation.team.name if reservation.team else 'No Team',
-            })
+            }
+            events.append(event)
 
-        logger.debug(f"Events data: {events}")  # Log the events data
         return JsonResponse(events, safe=False)
     except Exception as e:
         logger.error(f"Error in calendar_reservations: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+

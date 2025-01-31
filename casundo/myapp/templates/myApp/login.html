@@ -4,115 +4,20 @@
 {% block title %}{% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %} | CourtCentral{% endblock %}
 
 {% block content %}
-<div class="auth-container {% if mode == 'login' %}auth-container-login{% endif %}">
-    <div class="auth-card {% if mode == 'login' %}auth-card-narrow{% endif %}">
-        <div class="auth-header">
-            <img src="{% static 'images/ccLogo.png' %}" alt="CourtCentral Logo" class="auth-logo-left">
-            <h2 class="auth-title-centered {% if mode == 'login' %}auth-title-left{% endif %}">
-                {% if mode == 'login' %}Sign In{% else %}<span class="auth-title-centered">Sign Up</span>{% endif %}
-            </h2>
-        </div>
+<div class="auth-page">
+    <div class="auth-background">
+        <div class="background-pattern"></div>
+        <div class="background-overlay"></div>
+    </div>
 
-        <form method="POST" enctype="multipart/form-data" action="{% if mode == 'login' %}{% url 'login' %}{% else %}{% url 'signup' %}{% endif %}" class="auth-form">
-            {% csrf_token %}
-
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="auth-message {% if message.tags == 'error' %}auth-message-error{% else %}auth-message-success{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <div class="auth-fields {% if mode == 'signup' %}auth-fields-two-column{% endif %}">
-                <!-- Username or Email field -->
-                <div class="auth-field">
-                    <label class="auth-label">
-                        {% if mode == 'login' %}Username or Email{% else %}Username{% endif %}*
-                    </label>
-                    <input type="text" name="username_or_email" required class="auth-input">
-                </div>
-
-                {% if mode == 'signup' %}
-                    <!-- Email field - only show for signup -->
-                    <div class="auth-field">
-                        <label class="auth-label">Email</label>
-                        <input type="email" name="email" required class="auth-input">
-                    </div>
-                {% endif %}
-
-                <!-- Password field -->
-                <div class="auth-field">
-                    <label class="auth-label">Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" name="password" id="password" required class="auth-input">
-                        <span class="password-toggle" onclick="togglePasswordVisibility()">
-                            <i class="fas fa-eye"></i>
-                        </span>
-                    </div>
-                </div>
-
-                {% if mode == 'signup' %}
-                    <!-- Additional signup fields -->
-                    <div class="auth-field">
-                        <label class="auth-label">Phone Number</label>
-                        <input type="tel" name="phone_number" class="auth-input">
-                    </div>
-
-                    <div class="auth-field">
-                        <label class="auth-label">Address</label>
-                        <textarea name="address" rows="2" class="auth-input"></textarea>
-                    </div>
-
-                    <div class="auth-field">
-                        <label class="auth-label">Profile Picture</label>
-                        <input type="file" name="profile_picture" accept="image/*" class="auth-input">
-                    </div>
-                {% endif %}
-            </div>
-
-            <button type="submit" class="auth-button">
-                {% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %}
-            </button>
-        </form>
-
-        <p class="auth-footer">
-            {% if mode == 'login' %}
-                <span>Don't have an account?</span>
-                <a href="{% url 'signup' %}" class="auth-link">Sign Up</a>
-            {% else %}
-                <span>Already have an account?</span>
-                <a href="{% url 'login' %}" class="auth-link">Sign In</a>
-            {% endif %}
-        </p>
+    <div class="auth-container {% if mode == 'login' %}auth-container-login{% endif %}">
+        {% include 'myApp/auth_form.html' %}
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function toggleForm() {
-        const title = document.getElementById('form-title');
-        const emailField = document.getElementById('email-field');
-        const button = document.querySelector('button');
-        const toggleText = document.getElementById('toggle-text');
-        const toggleLink = document.getElementById('toggle-link');
-
-        if (title.innerText === "Sign Up") {
-            title.innerText = "Sign In";
-            emailField.style.display = "none";
-            button.innerText = "Sign In";
-            toggleText.innerText = "Don't have an account?";
-            toggleLink.innerText = "Sign Up";
-        } else {
-            title.innerText = "Sign Up";
-            emailField.style.display = "block";
-            button.innerText = "Sign Up";
-            toggleText.innerText = "Already have an account?";
-            toggleLink.innerText = "Sign In";
-        }
-    }
-
     function togglePasswordVisibility() {
         const passwordInput = document.getElementById('password');
         const toggleIcon = document.querySelector('.password-toggle i');

@@ -1,0 +1,118 @@
+{% load static %}
+
+<!-- This is the form that will be loaded in the modal -->
+<div class="auth-card {% if mode == 'login' %}auth-card-narrow{% endif %}">
+    <div class="auth-header">
+        <div class="logo-wrapper">
+            <img src="{% static 'images/ccLogo.png' %}" alt="CourtCentral Logo" class="auth-logo">
+        </div>
+        <h2 class="auth-title">
+            {% if mode == 'login' %}
+                Welcome Back!
+            {% else %}
+                Create Account
+            {% endif %}
+        </h2>
+        
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" 
+          action="{% if mode == 'login' %}{% url 'login' %}{% else %}{% url 'signup' %}{% endif %}" 
+          class="auth-form">
+        {% csrf_token %} 
+
+        
+        <div class="auth-fields {% if mode == 'signup' %}auth-fields-two-column{% endif %}">
+            <!-- Username or Email field -->
+            <div class="auth-field">
+                <label class="auth-label">
+                    <i class="fas fa-user"></i>
+                    {% if mode == 'login' %}Username or Email{% else %}Username{% endif %}*
+                </label>
+                <input type="text" name="username_or_email" required class="auth-input" 
+                       placeholder="{% if mode == 'login' %}Enter username or email{% else %}Choose a username{% endif %}">
+            </div>
+
+            {% if mode == 'signup' %}
+                <!-- Email field - only show for signup -->
+                <div class="auth-field">
+                    <label class="auth-label">
+                        <i class="fas fa-envelope"></i>
+                        Email*
+                    </label>
+                    <input type="email" name="email" required class="auth-input" placeholder="Enter your email">
+                </div>
+            {% endif %}
+
+            <!-- Password field -->
+            <div class="auth-field">
+                <label class="auth-label">
+                    <i class="fas fa-lock"></i>
+                    Password*
+                </label>
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" required class="auth-input" 
+                           placeholder="Enter your password">
+                    <span class="password-toggle" onclick="togglePasswordVisibility()">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+            </div>
+
+            {% if mode == 'signup' %}
+            <!-- Additional signup fields -->
+                <div class="auth-field">
+                    <label class="auth-label">
+                        <i class="fas fa-phone"></i>
+                        Phone Number*
+                    </label>
+                    <input type="tel" name="phone_number" required class="auth-input" 
+                        placeholder="Enter your phone number">
+                </div>
+            
+                <div class="auth-field">
+                    <label class="auth-label">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Address*
+                    </label>
+                    <textarea name="address" required class="auth-input" 
+                            placeholder="Enter your address" rows="2"></textarea>
+                </div>
+            
+                <div class="auth-field">
+                    <label class="auth-label">
+                        <i class="fas fa-image"></i>
+                        Profile Picture
+                    </label>
+                    <input type="file" name="profile_picture" accept="image/*" class="auth-input file-input">
+                </div>
+            {% endif %}
+        </div>
+
+        {% if mode == 'login' %}
+            <div class="auth-options">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember">
+                    <span>Remember me</span>
+                </label>
+                <a href="#" class="forgot-password">Forgot Password?</a>
+            </div>
+        {% endif %}
+
+        <button type="submit" class="auth-button">
+            <i class="fas {% if mode == 'login' %}fa-sign-in-alt{% else %}fa-user-plus{% endif %}"></i>
+            {% if mode == 'login' %}Sign In{% else %}Sign Up{% endif %}
+        </button>
+    </form>
+
+
+    <p class="auth-footer">
+        {% if mode == 'login' %}
+            <span>Don't have an account?</span>
+            <a href="{% url 'signup' %}" class="auth-link">Create Account</a>
+        {% else %}
+            <span>Already have an account?</span>
+            <a href="{% url 'login' %}" class="auth-link">Sign In</a>
+        {% endif %}
+    </p>
+</div>

@@ -19,7 +19,8 @@
         </div>
     {% endif %}
 
-     {% if courts %}
+    {% if courts %}
+    <div class="table-container">
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -34,14 +35,14 @@
             <tbody>
                 {% for court in courts %}
                     <tr>
-                        <td>{{ court.name }}</td>
-                        <td>{{ court.location }}</td>
-                        <td>{{ court.get_court_type_display }}</td>
-                        <td>{{ court.get_description_display|truncatechars:100 }}</td>
+                        <td title="{{ court.name }}">{{ court.name }}</td>
+                        <td title="{{ court.location }}">{{ court.location }}</td>
+                        <td title="{{ court.get_court_type_display }}">{{ court.get_court_type_display }}</td>
+                        <td title="{{ court.get_description_display }}">{{ court.get_description_display|truncatechars:100 }}</td>
                         <td>
                             {% if court.image %}
                                 <a href="#" class="court-image-name" data-image-url="{{ court.image.url }}">
-                                    {{ court.image.name|cut:"courts/" }}
+                                    {{ court.image.name|cut:"courts/"|truncatechars:20 }}
                                 </a>
                             {% else %}
                                 No Image
@@ -65,9 +66,10 @@
                 {% endfor %}
             </tbody>
         </table>
-    {% else %}
-        <p>No courts have been registered yet.</p>
-    {% endif %}
+    </div>
+{% else %}
+    <p>No courts have been registered yet.</p>
+{% endif %}
 
     <!-- Add Court Button Sticks to Bottom-Right -->
 <div class="add-court-button">

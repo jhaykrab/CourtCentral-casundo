@@ -1,8 +1,54 @@
-<header>
-    <nav>
-        <a href="{% url 'home' %}" {% if request.resolver_match.view_name == 'home' %}class="active"{% endif %}>Home</a>
-        <a href="{% url 'register_court' %}" {% if request.resolver_match.view_name == 'register_court' %}class="active"{% endif %}>Register Court</a>
-        <a href="{% url 'list_courts' %}" {% if request.resolver_match.view_name == 'list_courts' %}class="active"{% endif %}>Court List</a>
-        <a href="{% url 'create_reservation' %}" {% if request.resolver_match.view_name == 'create_reservation' %}class="active"{% endif %}>Reserve Court</a>
-        <a href="{% url 'court_calendar' %}">Court Calendar</a>  </nav>
-</header>
+{% if user.is_authenticated %}
+<nav>
+    <ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+               href="{% url 'home' %}">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'register_court' %}active{% endif %}" 
+               href="{% url 'register_court' %}">
+                <i class="fas fa-plus"></i> Register Court
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'list_courts' %}active{% endif %}" 
+               href="{% url 'list_courts' %}">
+                <i class="fas fa-basketball-ball"></i> My Courts
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'court_calendar' %}active{% endif %}" 
+               href="{% url 'court_calendar' %}">
+                <i class="fas fa-calendar-alt"></i> Calendar
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'create_reservation' %}active{% endif %}" 
+               href="{% url 'create_reservation' %}">
+                <i class="fas fa-plus-circle"></i> Create Reservation
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'reservation_status' %}active{% endif %}" 
+               href="{% url 'reservation_status' %}">
+                <i class="fas fa-clipboard-check"></i> Reservation Status
+            </a>
+        </li>
+    </ul>
+</nav>
+{% else %}
+<nav>
+    <ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+               href="{% url 'home' %}">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+{% endif %}

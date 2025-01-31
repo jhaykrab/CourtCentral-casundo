@@ -35,7 +35,40 @@
 
     <form id="reservation-form" method="post">
         {% csrf_token %}
-        {{ form|crispy }}
+        
+        <!-- Existing form fields -->
+        <div class="mb-3">
+            {{ form.team|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.court|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.date|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.start_time|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.end_time|as_crispy_field }}
+        </div>
+    
+        <!-- Payment section -->
+        <div class="card mb-3">
+            <div class="mb-3">
+                {{ form.payment_type|as_crispy_field }}
+            </div>
+            
+            <div class="mb-3">
+                {{ form.payment_amount|as_crispy_field }}
+            </div>
+            
+            <div class="mb-3 downpayment-field" style="display: none;">
+                {{ form.downpayment|as_crispy_field }}
+            </div>
+        
+        </div>
+    
         <button type="submit" class="btn theme-btn">Reserve</button>
     </form>
 
@@ -277,6 +310,46 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .catch(() => showMessage("An error occurred.", "error"));
     });
+});
+document.addEventListener("DOMContentLoaded", function() {
+    const paymentTypeInputs = document.querySelectorAll('input[name="payment_type"]');
+    const downpaymentField = document.querySelector('.downpayment-field');
+    const paymentAmountInput = document.querySelector('input[name="payment_amount"]');
+    const downpaymentInput = document.querySelector('input[name="downpayment"]');
+
+    // Function to handle payment type change
+    function handlePaymentTypeChange() {
+        const selectedValue = document.querySelector('input[name="payment_type"]:checked')?.value;
+        
+        if (selectedValue === 'INSTALLMENT') {
+            downpaymentField.style.display = 'block';
+            downpaymentInput.required = true;
+        } else {
+            downpaymentField.style.display = 'none';
+            downpaymentInput.required = false;
+            downpaymentInput.value = '';
+        }
+    }
+
+    // Add event listeners
+    paymentTypeInputs.forEach(input => {
+        input.addEventListener('change', handlePaymentTypeChange);
+    });
+
+    // Validate downpayment is less than total amount
+    downpaymentInput?.addEventListener('input', function() {
+        const totalAmount = parseFloat(paymentAmountInput.value) || 0;
+        const downpayment = parseFloat(this.value) || 0;
+        
+        if (downpayment >= totalAmount) {
+            this.setCustomValidity('Downpayment must be less than total amount');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    // Initial check for payment type
+    handlePaymentTypeChange();
 });
 
 </script>

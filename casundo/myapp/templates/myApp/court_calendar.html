@@ -6,25 +6,34 @@
         <!-- Reservations Sidebar -->
         <div id="reservations-sidebar">
             <h3>Reservations by Court</h3>
-            {% for court in courts %}
-                <div class="court-reservations">
-                    <h4>{{ court.name }}</h4>
-                    {% for reservation in court.reservations.all %}
-                        <div class="reservation-item" data-reservation-id="{{ reservation.id }}">
-                            <p><strong>Team:</strong> {{ reservation.team.name }}</p>
-                            <p><strong>Date:</strong> {{ reservation.date }}</p>
-                            <p><strong>Time:</strong> {{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }}</p>
-                            <!-- Add Edit and Delete Buttons -->
-                            <div class="reservation-actions">
-                                <button class="btn btn-sm btn-primary edit-reservation" data-reservation-id="{{ reservation.id }}">Edit</button>
-                                <button class="btn btn-sm btn-danger delete-reservation" data-reservation-id="{{ reservation.id }}">Delete</button>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p>No reservations for this court.</p>
-                    {% endfor %}
+            {% if courts %}
+                {% for court in courts %}
+                    <div class="court-reservations">
+                        <h4>{{ court.name }}</h4>
+                        {% if court.reservations.all %}
+                            {% for reservation in court.reservations.all %}
+                                <div class="reservation-item" data-reservation-id="{{ reservation.id }}">
+                                    <p><strong>Team:</strong> {{ reservation.team.name }}</p>
+                                    <p><strong>Date:</strong> {{ reservation.date }}</p>
+                                    <p><strong>Time:</strong> {{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }}</p>
+                                    <!-- Add Edit and Delete Buttons -->
+                                    <div class="reservation-actions">
+                                        <button class="btn btn-sm btn-primary edit-reservation" data-reservation-id="{{ reservation.id }}">Edit</button>
+                                        <button class="btn btn-sm btn-danger delete-reservation" data-reservation-id="{{ reservation.id }}">Delete</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p>No reservations for this court.</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-reservations">
+                    <p>No reservations yet.</p>
+                    <a href="{% url 'create_reservation' %}" class="btn btn-primary">Reserve Now!</a>
                 </div>
-            {% endfor %}
+            {% endif %}
         </div>
 
         <!-- Calendar Container -->
@@ -65,16 +74,16 @@
     <div class="modal fade" id="editReservationModal" tabindex="-1" aria-labelledby="editReservationModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editReservationModalLabel">Edit Reservation</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editReservationForm">
-                        {% csrf_token %}
+                <form id="edit-reservation-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Reservation</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editReservationId">
                         <div class="mb-3">
-                            <label for="editTeam" class="form-label">Team</label>
-                            <select class="form-select" id="editTeam" name="team" required>
+                            <label for="editTeamSelect" class="form-label">Team</label>
+                            <select name="team" id="editTeamSelect" class="form-control" required>
                                 {% for team in teams %}
                                     <option value="{{ team.id }}">{{ team.name }}</option>
                                 {% endfor %}
@@ -82,7 +91,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="editCourt" class="form-label">Court</label>
-                            <select class="form-select" id="editCourt" name="court" required>
+                            <select name="court" id="editCourt" class="form-control" required>
                                 {% for court in courts %}
                                     <option value="{{ court.id }}">{{ court.name }}</option>
                                 {% endfor %}
@@ -100,12 +109,11 @@
                             <label for="editEndTime" class="form-label">End Time</label>
                             <input type="time" class="form-control" id="editEndTime" name="end_time" required>
                         </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn theme-btn">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -161,7 +169,7 @@
                             eventClick: function(info) {
                                 // Extract event details
                                 const event = info.event;
-                                const reservationId = event.id;  // Ensure this is correctly extracted
+                                const reservationId = event.id;
                                 const teamName = event.extendedProps.team_name || 'No Team';
                                 const courtName = event.extendedProps.court_name || 'No Court';
                                 const description = event.extendedProps.description || 'No Description';
@@ -174,19 +182,12 @@
                                 document.getElementById('modalEndTime').textContent = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                                 document.getElementById('modalDescription').textContent = description;
 
-                                // Set the reservation ID for Edit/Delete actions
+                                // Set up edit button click handler
                                 document.getElementById('editReservationButton').onclick = () => {
                                     if (reservationId) {
-                                        // Populate the edit modal with the current reservation data
-                                        document.getElementById('editTeam').value = event.extendedProps.team_id;
-                                        document.getElementById('editCourt').value = event.extendedProps.court_id;
-                                        document.getElementById('editDate').value = event.start.toISOString().split('T')[0];
-                                        document.getElementById('editStartTime').value = event.start.toTimeString().split(' ')[0];
-                                        document.getElementById('editEndTime').value = event.end.toTimeString().split(' ')[0];
-
-                                        // Show the edit modal
-                                        const editModal = new bootstrap.Modal(document.getElementById('editReservationModal'));
-                                        editModal.show();
+                                        loadReservationDetails(reservationId);
+                                        // Close the details modal
+                                        bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
                                     } else {
                                         alert('Reservation ID is missing. Cannot edit.');
                                     }
@@ -248,30 +249,45 @@
         }
 
         // Handle Edit Reservation Form Submission
-        document.getElementById('editReservationForm').addEventListener('submit', function(event) {
+        document.getElementById('edit-reservation-form').addEventListener('submit', function(event) {
             event.preventDefault();
-            const reservationId = document.getElementById('editReservationButton').dataset.reservationId;
+            const reservationId = document.getElementById('editReservationId').value;
+            
+            // Get form values
+            const formData = {
+                team: document.getElementById('editTeamSelect').value,
+                court: document.getElementById('editCourt').value,
+                date: document.getElementById('editDate').value, // This should be in YYYY-MM-DD format
+                start_time: document.getElementById('editStartTime').value,
+                end_time: document.getElementById('editEndTime').value,
+            };
 
+            // Validate required fields
+            if (!formData.date) {
+                alert('Date is required');
+                return;
+            }
+
+            // Send the request
             fetch(`/edit_reservation/${reservationId}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    team: document.getElementById('editTeam').value,
-                    court: document.getElementById('editCourt').value,
-                    date: document.getElementById('editDate').value,
-                    start_time: document.getElementById('editStartTime').value,
-                    end_time: document.getElementById('editEndTime').value,
-                }),
+                body: JSON.stringify(formData),
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    window.location.reload(); // Refresh the page to reflect changes
+                    // Close the modal
+                    const editModal = bootstrap.Modal.getInstance(document.getElementById('editReservationModal'));
+                    editModal.hide();
+                    
+                    // Refresh the page to show updated data
+                    window.location.reload();
                 } else {
-                    alert('Failed to update reservation.');
+                    alert(data.message || 'Failed to update reservation.');
                 }
             })
             .catch(error => {
@@ -284,49 +300,83 @@
         document.querySelectorAll('.edit-reservation').forEach(button => {
             button.addEventListener('click', function() {
                 const reservationId = this.dataset.reservationId;
-
-                // Fetch reservation details from the backend
-                fetch(`/get_reservation/${reservationId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            // Populate the edit modal with the current reservation data
-                            document.getElementById('editTeam').value = data.reservation.team_id;
-                            document.getElementById('editCourt').value = data.reservation.court_id;
-                            document.getElementById('editDate').value = data.reservation.date;
-                            document.getElementById('editStartTime').value = data.reservation.start_time;
-                            document.getElementById('editEndTime').value = data.reservation.end_time;
-
-                            // Show the edit modal
-                            const editModal = new bootstrap.Modal(document.getElementById('editReservationModal'));
-                            editModal.show();
-
-                            // Update the form's action URL to include the reservation ID
-                            document.getElementById('editReservationForm').action = `/edit_reservation/${reservationId}/`;
-                        } else {
-                            alert('Failed to fetch reservation details.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred while fetching reservation details.');
-                    });
+                if (!reservationId) {
+                    console.error('No reservation ID found on button');
+                    alert('Error: No reservation ID found');
+                    return;
+                }
+                console.log('Edit button clicked for reservation:', reservationId);
+                loadReservationDetails(reservationId);
             });
         });
 
+        // Function to load reservation details
+        function loadReservationDetails(reservationId) {
+            fetch(`/get_reservation/${reservationId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received data:', data); // For debugging
+
+                    if (data.status === 'success') {
+                        // Set the reservation ID
+                        document.getElementById('editReservationId').value = reservationId;
+                        
+                        // Set form values
+                        const teamSelect = document.getElementById('editTeamSelect');
+                        const courtSelect = document.getElementById('editCourt');
+                        const dateInput = document.getElementById('editDate');
+                        const startTimeInput = document.getElementById('editStartTime');
+                        const endTimeInput = document.getElementById('editEndTime');
+
+                        // Set values if elements exist and data is available
+                        if (teamSelect && data.reservation.team_id) {
+                            teamSelect.value = data.reservation.team_id;
+                        }
+                        if (courtSelect && data.reservation.court_id) {
+                            courtSelect.value = data.reservation.court_id;
+                        }
+                        if (dateInput && data.reservation.date) {
+                            dateInput.value = data.reservation.date;
+                        }
+                        if (startTimeInput && data.reservation.start_time) {
+                            startTimeInput.value = data.reservation.start_time;
+                        }
+                        if (endTimeInput && data.reservation.end_time) {
+                            endTimeInput.value = data.reservation.end_time;
+                        }
+
+                        // Show the edit modal
+                        const editModal = new bootstrap.Modal(document.getElementById('editReservationModal'));
+                        editModal.show();
+                    } else {
+                        console.error('Error in response:', data);
+                        alert(data.message || 'Failed to fetch reservation details.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error details:', error);
+                    alert(`Error loading reservation details: ${error.message}`);
+                });
+        }
+
        // Handle Sidebar Delete Button Click
-document.querySelectorAll('.delete-reservation').forEach(button => {
-    button.addEventListener('click', function() {
-        const reservationId = this.dataset.reservationId;
+        document.querySelectorAll('.delete-reservation').forEach(button => {
+            button.addEventListener('click', function() {
+                const reservationId = this.dataset.reservationId;
 
-        // Set the reservation ID for the delete action
-        document.getElementById('confirmDeleteButton').dataset.reservationId = reservationId;
+                // Set the reservation ID for the delete action
+                document.getElementById('confirmDeleteButton').dataset.reservationId = reservationId;
 
-        // Show the delete confirmation modal
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
-        deleteModal.show();
-    });
-});
+                // Show the delete confirmation modal
+                const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+                deleteModal.show();
+            });
+        });
 
         // Handle Confirm Delete Button Click
         document.getElementById('confirmDeleteButton').addEventListener('click', function() {
