@@ -4,7 +4,7 @@ from django.conf.urls.static import static
 from . import views
 from .views import (
     home, register_court, list_courts, create_reservation,
-    court_calendar, calendar_reservations, update_team, delete_team
+    court_calendar, calendar_reservations, update_team, delete_team, edit_reservation, delete_reservation
 )
 
 urlpatterns = [
@@ -21,6 +21,8 @@ urlpatterns = [
     path("delete_team/<int:team_id>/", delete_team, name="delete_team"),
     path('court_calendar/', views.court_calendar, name='court_calendar'), # This is the correct line now
     path('calendar/reservations/', views.calendar_reservations, name='calendar_reservations'),  # Corrected name
+    path('edit_reservation/<int:reservation_id>/', edit_reservation, name='edit_reservation'),
+    path('delete_reservation/<int:reservation_id>/', delete_reservation, name='delete_reservation'),
 ]
 
 if settings.DEBUG:

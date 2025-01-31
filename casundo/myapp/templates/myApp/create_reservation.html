@@ -2,22 +2,24 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<div class="container mt-5 mb-6 p-5 shadow-sm bg-white rounded add-court-container">
     <h1>Create Reservation</h1>
 
-    <div id="success-message" class="alert alert-success" style="display: none;">
-        Reservation created successfully!
-    </div>
-    <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+     {% if messages %}
+        <div class="container mt-3">
+            {% for message in messages %}
+                <div class="alert alert-dismissible fade show
+                            {% if message.tags == 'success' %}alert-success-custom
+                            {% elif message.tags == 'error' or message.tags == 'danger' %}alert-error-custom{% endif %}"
+                     role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
     <div class="mb-3">
-        <label for="id_team" class="form-label">Team</label>
-        <select class="form-select" id="id_team" name="team" required>
-            <option value="">Select Team</option>
-            {% for team in teams %}
-                <option value="{{ team.id }}">{{ team.name }}</option>
-            {% endfor %}
-        </select>
-
         <div class="mt-2">
             <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addTeamModal">
                 Add New Team
@@ -34,9 +36,10 @@
     <form id="reservation-form" method="post">
         {% csrf_token %}
         {{ form|crispy }}
-        <button type="submit" class="btn btn-primary">Reserve</button>
+        <button type="submit" class="btn theme-btn">Reserve</button>
     </form>
 
+    <!-- Add Team Modal -->
     <div class="modal fade" id="addTeamModal" tabindex="-1" aria-labelledby="addTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -46,7 +49,8 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert alert-danger add-team-error" style="display:none;"></div> <div class="mb-3">
+                        <div class="alert alert-danger add-team-error" style="display:none;"></div>
+                        <div class="mb-3">
                             <label for="teamName" class="form-label">Team Name</label>
                             <input type="text" class="form-control" id="teamName" name="name" required>
                         </div>
@@ -64,13 +68,14 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save Team</button>
+                        <button type="submit" class="btn theme-btn">Save Team</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
+    <!-- Edit Team Modal -->
     <div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -80,7 +85,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                         <div class="alert alert-danger edit-team-error" style="display:none;"></div>
+                        <div class="alert alert-danger edit-team-error" style="display:none;"></div>
                         <input type="hidden" id="editTeamId">
                         <div class="mb-3">
                             <label for="editTeamName" class="form-label">Team Name</label>
@@ -100,13 +105,14 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="submit" class="btn theme-btn">Save Changes</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
+    <!-- Delete Team Modal -->
     <div class="modal fade" id="deleteTeamModal" tabindex="-1" aria-labelledby="deleteTeamModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -123,6 +129,7 @@
             </div>
         </div>
     </div>
+</div>
 
 
 <script>
@@ -135,230 +142,128 @@ document.addEventListener("DOMContentLoaded", function () {
     const editTeamModal = new bootstrap.Modal(document.getElementById("editTeamModal"));
     const deleteTeamModal = new bootstrap.Modal(document.getElementById("deleteTeamModal"));
 
-    // Enable/Disable Edit and Delete buttons
+    // ✅ Create Message Container Below Navbar
+    const messageContainer = document.createElement("div");
+    messageContainer.id = "message-container";
+    messageContainer.style.position = "fixed";
+    messageContainer.style.top = "10vh"; // Adjust based on navbar height
+    messageContainer.style.left = "50%";
+    messageContainer.style.transform = "translateX(-50%)";
+    messageContainer.style.zIndex = "1050";
+    messageContainer.style.width = "80%";
+    messageContainer.style.maxWidth = "400px";
+    document.body.prepend(messageContainer);
+
+    function showMessage(message, type) {
+        const alertBox = document.createElement("div");
+        alertBox.className = `alert ${type === "success" ? "alert-success" : "alert-danger"} alert-dismissible fade show text-center`;
+        alertBox.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        messageContainer.innerHTML = ""; // Clear previous messages
+        messageContainer.appendChild(alertBox);
+        setTimeout(() => alertBox.remove(), 2000);
+    }
+
+    // ✅ Enable/Disable Edit and Delete buttons
     teamDropdown.addEventListener("change", function () {
         editTeamBtn.disabled = !this.value;
         deleteTeamBtn.disabled = !this.value;
     });
 
-    // Add Team Form Handling
-const addTeamForm = document.getElementById("add-team-form");
-const addTeamErrorDiv = document.querySelector("#addTeamModal .add-team-error");
-
-addTeamForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    const data = {  // Create a plain JavaScript object
-        name: document.getElementById("teamName").value,
-        contact_person: document.getElementById("contactPerson").value,
-        contact_email: document.getElementById("contactEmail").value,
-        contact_phone: document.getElementById("contactPhone").value,
-    };
-
-    fetch('/create_team/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': "{{ csrf_token }}",
-            'Content-Type': 'application/json' // Important: Set Content-Type
-        },
-        body: JSON.stringify(data) // Send JSON string
-    })
-    .then(response => {
-        if (!response.ok) {
-            console.error("HTTP Error:", response.status, response.statusText);
-            return response.text().then(text => {
-                console.error("Response Text (HTML or Error):", text);
-                throw new Error("HTTP Error: " + response.status + " - " + text);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.status === "success") {
-            addTeamModal.hide();
-            addTeamForm.reset();
-            addTeamErrorDiv.style.display = "none";
-
-            const newOption = document.createElement('option');
-            newOption.value = data.team_id;
-            newOption.text = data.team_name;
-            teamDropdown.appendChild(newOption);
-            teamDropdown.value = data.team_id;
-
-        } else {
-            console.error("Server Error (JSON):", data.message);
-            addTeamErrorDiv.style.display = "block";
-            addTeamErrorDiv.textContent = data.message || "Failed to add team.";
-        }
-    })
-    .catch(error => {
-        console.error("Fetch Error:", error);
-        addTeamErrorDiv.style.display = "block";
-        addTeamErrorDiv.textContent = "An error occurred. Please try again.";
+    // ✅ Add Team
+    document.getElementById("add-team-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        fetch("/create_team/", {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("teamName").value,
+                contact_person: document.getElementById("contactPerson").value,
+                contact_email: document.getElementById("contactEmail").value,
+                contact_phone: document.getElementById("contactPhone").value,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                addTeamModal.hide();
+                showMessage("Team added!", "success");
+                const newOption = document.createElement("option");
+                newOption.value = data.team_id;
+                newOption.text = data.team_name;
+                teamDropdown.appendChild(newOption);
+                teamDropdown.value = data.team_id;
+            } else {
+                showMessage(data.message || "Failed to add team.", "error");
+            }
+        })
+        .catch(() => showMessage("An error occurred.", "error"));
     });
-});
 
-    // Edit Team Form Handling (Corrected)
-    const editTeamForm = document.getElementById("edit-team-form");
-    const editTeamErrorDiv = document.querySelector("#editTeamModal .edit-team-error");
-
+    // ✅ Edit Team
     editTeamBtn.addEventListener("click", function () {
-        const selectedTeamId = teamDropdown.value;
-        if (!selectedTeamId) return;
-
-        fetch(`/get_team_details/${selectedTeamId}/`)
-            .then(response => {
-                if (!response.ok) {
-                    console.error("HTTP Error:", response.status, response.statusText);
-                    return response.text().then(text => {
-                        console.error("Response Text:", text);
-                        throw new Error(text);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.error) {
-                    alert("Error: " + data.error);
-                    return;
-                }
-
-                document.getElementById("editTeamId").value = selectedTeamId;
-                document.getElementById("editTeamName").value = data.name;
-                document.getElementById("editContactPerson").value = data.contact_person;
-                document.getElementById("editContactEmail").value = data.contact_email || "";
-                document.getElementById("editContactPhone").value = data.contact_phone;
-
-                editTeamModal.show();
-            })
-            .catch(error => {
-                console.error("Error fetching team details:", error);
-                alert("Failed to load team details.");
-            });
+        const teamId = teamDropdown.value;
+        if (!teamId) return;
+        fetch(`/get_team_details/${teamId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) return showMessage("Error loading team.", "error");
+            document.getElementById("editTeamId").value = teamId;
+            document.getElementById("editTeamName").value = data.name;
+            document.getElementById("editContactPerson").value = data.contact_person;
+            document.getElementById("editContactEmail").value = data.contact_email || "";
+            document.getElementById("editContactPhone").value = data.contact_phone;
+            editTeamModal.show();
+        })
+        .catch(() => showMessage("Failed to load team.", "error"));
     });
 
-    editTeamForm.addEventListener("submit", function (event) { // Only ONE submit handler
+    document.getElementById("edit-team-form").addEventListener("submit", function (event) {
         event.preventDefault();
         const teamId = document.getElementById("editTeamId").value;
-
-        const data = {
-            name: document.getElementById("editTeamName").value,
-            contact_person: document.getElementById("editContactPerson").value,
-            contact_email: document.getElementById("editContactEmail").value,
-            contact_phone: document.getElementById("editContactPhone").value,
-        };
-
         fetch(`/update_team/${teamId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': "{{ csrf_token }}",
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("editTeamName").value,
+                contact_person: document.getElementById("editContactPerson").value,
+                contact_email: document.getElementById("editContactEmail").value,
+                contact_phone: document.getElementById("editContactPhone").value,
+            }),
         })
-        .then(response => {
-            if (!response.ok) {
-                console.error("HTTP Error:", response.status, response.statusText);
-                return response.text().then(text => {
-                    console.error("Response Text:", text);
-                    throw new Error(text);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log("Edit Team Success Response:", data);
-
             if (data.status === "success") {
                 editTeamModal.hide();
-                editTeamErrorDiv.style.display = "none";
-                alert("Team updated successfully!");
-
+                showMessage("Team updated!", "success");
                 const selectedOption = teamDropdown.querySelector(`option[value="${teamId}"]`);
-                if (selectedOption) {
-                    selectedOption.text = data.updated_team.name; // Update dropdown text
-                }
+                if (selectedOption) selectedOption.text = data.updated_team.name;
             } else {
-                console.error("Edit Team Server Error:", data.message);
-                editTeamErrorDiv.style.display = "block";
-                editTeamErrorDiv.textContent = data.message || "Failed to update team.";
+                showMessage(data.message || "Update failed.", "error");
             }
         })
-        .catch(error => {
-            console.error("Edit Team Fetch Error:", error);
-            editTeamErrorDiv.style.display = "block";
-            editTeamErrorDiv.textContent = "An error occurred. Please try again.";
-        });
+        .catch(() => showMessage("An error occurred.", "error"));
     });
 
-    editTeamForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const teamId = document.getElementById("editTeamId").value;
-        const formData = new FormData(editTeamForm);
-
-         fetch(`/update_team/${teamId}/`, { /* ... */ })
-    .then(response => {
-        if (!response.ok) {
-            console.error("HTTP Error:", response.status, response.statusText);
-            return response.text().then(text => { // Get the error body (important!)
-                console.error("Response Text (HTML or Error):", text); // Log the HTML or error
-                throw new Error("HTTP Error: " + response.status + " - " + text); // Throw with more info
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log("Success Response Data:", data); // Log successful JSON data
-
-        if (data.status === "success") { // Check the status from JSON
-            // ... (handle successful update)
-        } else {
-            console.error("Server Error (JSON):", data.message); // Log the error message from JSON
-            editTeamErrorDiv.style.display = "block";
-            editTeamErrorDiv.textContent = data.message || "Failed to update team."; // Display to user
-        }
-    })
-    .catch(error => {
-        console.error("Fetch Error:", error); // Log the *full* error object
-        editTeamErrorDiv.style.display = "block";
-        editTeamErrorDiv.textContent = "An error occurred. Please try again.";
-    });
-});
-
-    // Delete Team Handling
-    const confirmDeleteBtn = document.getElementById("confirm-delete-team");
-
+    // ✅ Delete Team
     deleteTeamBtn.addEventListener("click", function () {
-        const selectedTeamId = teamDropdown.value;
-        confirmDeleteBtn.dataset.teamId = selectedTeamId; // Store ID in button
+        document.getElementById("confirm-delete-team").dataset.teamId = teamDropdown.value;
     });
 
-
-    confirmDeleteBtn.addEventListener("click", function () {
+    document.getElementById("confirm-delete-team").addEventListener("click", function () {
         const teamId = this.dataset.teamId;
         if (!teamId) return;
-
         fetch(`/delete_team/${teamId}/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': "{{ csrf_token }}"
-            }
+            method: "DELETE",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
         })
-        .then(response => {
-            if (!response.ok) {
-                console.error("HTTP Error:", response.status, response.statusText);
-                return response.text().then(text => {
-                    console.error("Response Text:", text);
-                    throw new Error(text);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.status === "success") {
                 deleteTeamModal.hide();
-                alert("Team deleted successfully!");
-
+                showMessage("Team deleted!", "success");
                 const optionToRemove = teamDropdown.querySelector(`option[value="${teamId}"]`);
                 if (optionToRemove) {
                     teamDropdown.removeChild(optionToRemove);
@@ -367,15 +272,13 @@ addTeamForm.addEventListener("submit", function (event) {
                     deleteTeamBtn.disabled = true;
                 }
             } else {
-                alert(data.message || "Failed to delete team.");
+                showMessage(data.message || "Delete failed.", "error");
             }
         })
-        .catch(error => {
-            console.error("Error:", error);
-            alert("An error occurred. Please try again.");
-        });
+        .catch(() => showMessage("An error occurred.", "error"));
     });
 });
+
 </script>
 
 

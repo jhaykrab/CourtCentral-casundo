@@ -7,6 +7,8 @@ from .forms import ReservationForm, CourtForm
 from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.template.loader import render_to_string
+import logging
+logger = logging.getLogger(__name__)
 import json
 
 
@@ -192,18 +194,60 @@ def court_calendar(request):
         except ValueError:
             pass
 
+    # Fetch all courts with their related reservations
+    courts = Court.objects.prefetch_related('reservations').all()
+
     return render(request, 'myApp/court_calendar.html', {
         'reservations': reservations,
-        'selected_date': selected_date
+        'selected_date': selected_date,
+        'courts': courts,  # Pass courts to the template
     })
 
+@csrf_exempt
+def edit_reservation(request, reservation_id):
+    if request.method == 'POST':
+        try:
+            reservation = Reservation.objects.get(id=reservation_id)
+            data = json.loads(request.body)
+            reservation.team_id = data.get('team')
+            reservation.court_id = data.get('court')
+            reservation.date = data.get('date')
+            reservation.start_time = data.get('start_time')
+            reservation.end_time = data.get('end_time')
+            reservation.save()
+            return JsonResponse({'status': 'success'})
+        except Reservation.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Reservation not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+def delete_reservation(request, reservation_id):
+    if request.method == 'DELETE':
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+        reservation.delete()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
 def calendar_reservations(request):
-    reservations = Reservation.objects.select_related('team', 'court')
-    events = []
-    for reservation in reservations:
-        events.append({
-            'title': f"{reservation.team.name} ({reservation.court.name})",
-            'start': reservation.date.isoformat() + 'T' + reservation.start_time.strftime('%H:%M:%S'),
-            'end': reservation.date.isoformat() + 'T' + reservation.end_time.strftime('%H:%M:%S'),
-        })
-    return JsonResponse(events, safe=False)
+    try:
+        reservations = Reservation.objects.select_related('team', 'court')
+        events = []
+
+        for reservation in reservations:
+            events.append({
+                'id': reservation.id,  # Include the reservation ID
+                'title': f"{reservation.team.name if reservation.team else 'No Team'} ({reservation.court.name if reservation.court else 'No Court'})",
+                'start': reservation.date.isoformat() + 'T' + reservation.start_time.strftime('%H:%M:%S'),
+                'end': reservation.date.isoformat() + 'T' + reservation.end_time.strftime('%H:%M:%S'),
+                'description': reservation.court.description if reservation.court else 'No Description',
+                'court_name': reservation.court.name if reservation.court else 'No Court',
+                'team_name': reservation.team.name if reservation.team else 'No Team',
+            })
+
+        logger.debug(f"Events data: {events}")  # Log the events data
+        return JsonResponse(events, safe=False)
+    except Exception as e:
+        logger.error(f"Error in calendar_reservations: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
