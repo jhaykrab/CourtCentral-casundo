@@ -57,6 +57,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'casundo.wsgi.application'
 
+LOGIN_URL = 'login'  # Where to redirect if user is not authenticated
+LOGIN_REDIRECT_URL = 'home'  # Where to redirect after successful login
+LOGOUT_REDIRECT_URL = 'login'  # Where to redirect after logout
+
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

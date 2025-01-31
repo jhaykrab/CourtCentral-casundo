@@ -13,16 +13,28 @@
     {% block styles %}{% endblock %}
 </head>
 <body>
+    {% if not hide_navbar %}  <!-- Add this condition -->
     <header>
         {% include 'myApp/navbar.html' %}
+        <div class="navbar-nav">
+            {% if user.is_authenticated %}
+                <span class="nav-item">Welcome, {{ user.username }}</span>
+                <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+            {% else %}
+                <a class="nav-link" href="{% url 'login' %}">Login</a>
+            {% endif %}
+        </div>
     </header>
+    {% endif %}
+
     <div class="container">
-        <div class="row justify-content-center"> <!-- Center the row -->
-            <main class="col-md-10 col-lg-8"> <!-- Adjust column width for centering -->
+        <div class="row justify-content-center">
+            <main class="{% if hide_navbar %}col-12{% else %}col-md-10 col-lg-8{% endif %}">
                 {% block content %}{% endblock %}
             </main>
         </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 </body>

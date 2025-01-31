@@ -1,5 +1,8 @@
 from django import forms
 from .models import Court, Reservation, Team
+from django.contrib.auth.models import User
+from .models import UserProfile
+
 
 COURT_TYPE_CHOICES = (
     ('FULL_COVERED', 'Full Covered Court'),
@@ -17,6 +20,26 @@ DESCRIPTION_CHOICES = (  # Choices for the description field
     ('FUTSAL', 'Futsal'),  # Example, add more as needed
     ('OTHER', 'Other'),
 )
+
+class SignUpForm(forms.Form):
+    username = forms.CharField(max_length=150)
+    email = forms.EmailField()
+    password = forms.CharField(widget=forms.PasswordInput)
+    confirm_password = forms.CharField(widget=forms.PasswordInput)
+    phone_number = forms.CharField(max_length=15, required=False)
+    address = forms.CharField(widget=forms.Textarea, required=False)
+    profile_picture = forms.ImageField(required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        if password and confirm_password and password != confirm_password:
+            raise forms.ValidationError("Passwords do not match")
+
+        return cleaned_data
+    
 
 class CourtForm(forms.ModelForm):
     court_type = forms.ChoiceField(choices=COURT_TYPE_CHOICES, widget=forms.RadioSelect)

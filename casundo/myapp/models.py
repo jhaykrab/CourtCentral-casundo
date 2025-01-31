@@ -1,6 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+
 
 RESERVATION_STATUSES = (
     ('PENDING', 'Pending'),
@@ -119,22 +123,23 @@ class Payment(models.Model):
 
 
 class UserProfile(models.Model):
-    ADMIN = 'Admin'
-    OFFICER = 'Officer'
-    USER = 'User'
-
-    ROLES = [
-        (ADMIN, 'Admin'),
-        (OFFICER, 'Officer'),
-        (USER, 'User'),
-    ]
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    role = models.CharField(max_length=10, choices=ROLES, default=USER)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.role}"
+        return f"{self.user.username}'s Profile"
 
-    class Meta:
-        verbose_name = "User Profile"
-        verbose_name_plural = "User Profiles"
+    @classmethod
+    def get_or_create_profile(cls, user):
+        """Get or create a UserProfile for the given user."""
+        profile, created = cls.objects.get_or_create(user=user)
+        return profile
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    """Create or update user profile when user is created/updated."""
+    UserProfile.get_or_create_profile(instance)
