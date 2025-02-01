@@ -1,10 +1,16 @@
 /* General Styles */
 body {
     margin: 0;
+    width: 100%;
     font-family: 'Roboto', Arial, sans-serif;
     background-color: #f8f9fa;
     color: #333;
     line-height: 1.6;
+}
+
+.body-container {
+    width: 100%;
+    min-width: 1200px;
 }
 
 h1 {
@@ -116,13 +122,14 @@ header {
 }
 
 .btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
+    background-color: #2C3E50;
+    border-color: #778ea5;
+
 }
 
 .btn-primary:hover {
-    background-color: #0b5ed7;
-    border-color: #0a58ca;
+    background-color: #778ea5;
+    border-color: #2C3E50;
 }
 
 .btn-secondary {

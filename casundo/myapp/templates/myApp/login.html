@@ -10,9 +10,7 @@
         <div class="background-overlay"></div>
     </div>
 
-    <div class="auth-container {% if mode == 'login' %}auth-container-login{% endif %}">
-        {% include 'myApp/auth_form.html' %}
-    </div>
+    {% include 'myApp/auth_form.html' %}  {# Directly including the form without a container #}
 </div>
 {% endblock %}
 
