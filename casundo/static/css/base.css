@@ -1,9 +1,334 @@
-h1 {
-color: green;
+/* General Styles */
+body {
+    margin: 0;
+    width: 100%;
+    font-family: 'Roboto', Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
 }
 
-.cclogo {
-    height: 200px;
-    width: auto;
+.body-container {
+    width: 100%;
+    min-width: 1200px;
+}
 
+h1 {
+    color: #2C3E50;
+    font-size: 32px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Navbar Styles */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2C3E50;
+    padding: 15px 20px;
+
+}
+
+/* Navbar Container */
+.navbar-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #2C3E50;
+    padding: 1rem 2rem;
+    background-color: var(--background-light);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    position: relative; /* Added for absolute positioning of centered nav */
+}
+
+/* Logo and Welcome Message */
+.navbar-logo {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-logo-img {
+    height: 80px;
+    width: auto;
+}
+
+
+.welcome-text {
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.welcome-text:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Unauthenticated State */
+.unauthenticated-nav {
+    flex: initial;
+    margin-left: 20px; /* Small gap between logo and Home link */
+}
+
+.unauthenticated-nav a {
+    font-size: 1.5rem; /* Larger font size */
+    font-weight: 600;
+    color: #ff7f00; /* Match your theme color */
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.unauthenticated-nav a:hover {
+    color: #ffe7c2;
+}
+
+/* Profile Modal Styles */
+.modal-content {
+    background-color: #fff;
+    border-radius: 8px;
+}
+
+.modal-header {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+.current-profile-pic img {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #dee2e6;
+}
+
+/* Form Styles */
+.modal-body .form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+.modal-body .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+    background-color: #2C3E50;
+    border-color: #778ea5;
+
+}
+
+.btn-primary:hover {
+    background-color: #778ea5;
+    border-color: #2C3E50;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+
+.password-change-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+}
+
+.input-group .btn-outline-secondary {
+    border-color: #ced4da;
+}
+
+.input-group .btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+}
+
+.input-group .btn-outline-secondary:focus {
+    box-shadow: none;
+}
+
+/* Welcome Message (only visible when authenticated) */
+.navbar-welcome {
+    margin-left: 1.5vw;
+    color: #ECF0F1;
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+
+/* Navbar Links - Default (Authenticated) State */
+.navbar-links {
+    position: absolute; /* Position in center regardless of other elements */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+}
+
+.navbar-links nav {
+    display: flex;
+    justify-content: center;
+}
+
+.navbar-links .nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem; /* Reduced gap between nav items */
+}
+
+.navbar-links .nav-link {
+    white-space: nowrap;  /* Prevent text wrapping */
+    padding: 8px 12px;
+    font-size: 14px;  /* Slightly smaller font size */
+}
+.navbar-links a {
+    text-decoration: none;
+    font-family: Roboto Condensed, sans-serif;
+    color: #ff7f00;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 15px;
+    transition: color 0.3s ease;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.navbar-links a:hover {
+    color: #ffe7c2;
+}
+
+/* Logout Button */
+.navbar-logout {
+    flex: 1;
+    text-align: right;
+}
+
+.navbar-logout a {
+    text-decoration: none;
+    color: #ECF0F1;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 10px 15px;
+    transition: color 0.3s ease;
+}
+
+.navbar-logout a:hover {
+    color: #f46060;
+}
+
+.navbar-logout .fa-sign-out-alt {
+    margin-right: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .navbar-links .nav-link {
+        padding: 8px 8px;
+        font-size: 13px;
+    }
+}
+
+/* Responsive Navbar */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .navbar-container {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 1rem;
+        
+    }
+
+    .navbar-logo {
+        margin-bottom: 1rem;
+    }
+
+    .navbar-links {
+        position: static;
+        transform: none;
+        width: 100%;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+
+    .navbar-links .nav {
+        gap: 1rem;
+    }
+
+    .unauthenticated-nav {
+        margin-left: 10px;
+    }
+
+    .navbar-welcome {
+        margin: 0.5rem 0;
+    }
+}
+
+/* Image Styling */
+.cclogo {
+    width: 150px;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Blog Post Styling */
+.post-entry {
+    background-color: #ffffff;
+    padding: 20px;
+    margin: 20px auto;
+    border-radius: 8px;
+    max-width: 800px;
+    transition: transform 0.2s ease;
+}
+
+.post-entry:hover {
+    transform: translateY(-5px);
+}
+
+.post-entry h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #2C3E50;
+}
+
+.post-entry p {
+    color: #555;
+    font-size: 16px;
+}
+
+/* Links Inside Posts */
+.post-entry h2 a {
+    text-decoration: none;
+    color: #1ABC9C;
+    transition: color 0.3s ease;
+}
+
+.post-entry h2 a:hover {
+    color: #16a085;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 10px 15px;
+    background-color: #2C3E50;
+    color: #ECF0F1;
+    font-size: 14px;
 }

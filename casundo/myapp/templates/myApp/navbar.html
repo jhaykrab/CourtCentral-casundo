@@ -1,4 +1,54 @@
-<header>
-      <a href="{% url 'home' %}">Home</a>
-      <a href="{% url 'about' %}">About</a>
-</header>
+{% if user.is_authenticated %}
+<nav>
+    <ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+               href="{% url 'home' %}">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'register_court' %}active{% endif %}" 
+               href="{% url 'register_court' %}">
+                <i class="fas fa-plus"></i> Register Court
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'list_courts' %}active{% endif %}" 
+               href="{% url 'list_courts' %}">
+                <i class="fas fa-basketball-ball"></i> My Courts
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'court_calendar' %}active{% endif %}" 
+               href="{% url 'court_calendar' %}">
+                <i class="fas fa-calendar-alt"></i> Calendar
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'create_reservation' %}active{% endif %}" 
+               href="{% url 'create_reservation' %}">
+                <i class="fas fa-plus-circle"></i> Create Reservation
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'reservation_status' %}active{% endif %}" 
+               href="{% url 'reservation_status' %}">
+                <i class="fas fa-clipboard-check"></i> Reservation Status
+            </a>
+        </li>
+    </ul>
+</nav>
+{% else %}
+<nav>
+    <ul class="nav">
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" 
+               href="{% url 'home' %}">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+{% endif %}

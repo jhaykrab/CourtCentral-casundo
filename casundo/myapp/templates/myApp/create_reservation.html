@@ -1,0 +1,358 @@
+{% extends 'myApp/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-5 mb-6 p-5 shadow-sm bg-white rounded add-court-container">
+    <h1>Create Reservation</h1>
+
+     {% if messages %}
+        <div class="container mt-3">
+            {% for message in messages %}
+                <div class="alert alert-dismissible fade show
+                            {% if message.tags == 'success' %}alert-success-custom
+                            {% elif message.tags == 'error' or message.tags == 'danger' %}alert-error-custom{% endif %}"
+                     role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <div class="mt-2">
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addTeamModal">
+                Add New Team
+            </button>
+            <button type="button" class="btn btn-warning edit-team-btn" data-bs-toggle="modal" data-bs-target="#editTeamModal" disabled>
+                Edit Selected Team
+            </button>
+            <button type="button" class="btn btn-danger delete-team-btn" data-bs-toggle="modal" data-bs-target="#deleteTeamModal" disabled>
+                Delete Selected Team
+            </button>
+        </div>
+    </div>
+
+    <form id="reservation-form" method="post">
+        {% csrf_token %}
+        
+        <!-- Existing form fields -->
+        <div class="mb-3">
+            {{ form.team|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.court|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.date|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.start_time|as_crispy_field }}
+        </div>
+        <div class="mb-3">
+            {{ form.end_time|as_crispy_field }}
+        </div>
+    
+        <!-- Payment section -->
+        <div class="card mb-3">
+            <div class="mb-3">
+                {{ form.payment_type|as_crispy_field }}
+            </div>
+            
+            <div class="mb-3">
+                {{ form.payment_amount|as_crispy_field }}
+            </div>
+            
+            <div class="mb-3 downpayment-field" style="display: none;">
+                {{ form.downpayment|as_crispy_field }}
+            </div>
+        
+        </div>
+    
+        <button type="submit" class="btn theme-btn">Reserve</button>
+    </form>
+
+    <!-- Add Team Modal -->
+    <div class="modal fade" id="addTeamModal" tabindex="-1" aria-labelledby="addTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="add-team-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger add-team-error" style="display:none;"></div>
+                        <div class="mb-3">
+                            <label for="teamName" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="teamName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactPerson" class="form-label">Contact Person</label>
+                            <input type="text" class="form-control" id="contactPerson" name="contact_person" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactEmail" class="form-label">Contact Email</label>
+                            <input type="email" class="form-control" id="contactEmail" name="contact_email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="contactPhone" class="form-label">Contact Phone</label>
+                            <input type="text" class="form-control" id="contactPhone" name="contact_phone" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn theme-btn">Save Team</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Team Modal -->
+    <div class="modal fade" id="editTeamModal" tabindex="-1" aria-labelledby="editTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="edit-team-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger edit-team-error" style="display:none;"></div>
+                        <input type="hidden" id="editTeamId">
+                        <div class="mb-3">
+                            <label for="editTeamName" class="form-label">Team Name</label>
+                            <input type="text" class="form-control" id="editTeamName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactPerson" class="form-label">Contact Person</label>
+                            <input type="text" class="form-control" id="editContactPerson" name="contact_person" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactEmail" class="form-label">Contact Email</label>
+                            <input type="email" class="form-control" id="editContactEmail" name="contact_email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContactPhone" class="form-label">Contact Phone</label>
+                            <input type="text" class="form-control" id="editContactPhone" name="contact_phone" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn theme-btn">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Team Modal -->
+    <div class="modal fade" id="deleteTeamModal" tabindex="-1" aria-labelledby="deleteTeamModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Team</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this team?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirm-delete-team">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const teamDropdown = document.getElementById("id_team");
+    const editTeamBtn = document.querySelector(".edit-team-btn");
+    const deleteTeamBtn = document.querySelector(".delete-team-btn");
+
+    const addTeamModal = new bootstrap.Modal(document.getElementById("addTeamModal"));
+    const editTeamModal = new bootstrap.Modal(document.getElementById("editTeamModal"));
+    const deleteTeamModal = new bootstrap.Modal(document.getElementById("deleteTeamModal"));
+
+    // ✅ Create Message Container Below Navbar
+    const messageContainer = document.createElement("div");
+    messageContainer.id = "message-container";
+    messageContainer.style.position = "fixed";
+    messageContainer.style.top = "10vh"; // Adjust based on navbar height
+    messageContainer.style.left = "50%";
+    messageContainer.style.transform = "translateX(-50%)";
+    messageContainer.style.zIndex = "1050";
+    messageContainer.style.width = "80%";
+    messageContainer.style.maxWidth = "400px";
+    document.body.prepend(messageContainer);
+
+    function showMessage(message, type) {
+        const alertBox = document.createElement("div");
+        alertBox.className = `alert ${type === "success" ? "alert-success" : "alert-danger"} alert-dismissible fade show text-center`;
+        alertBox.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        messageContainer.innerHTML = ""; // Clear previous messages
+        messageContainer.appendChild(alertBox);
+        setTimeout(() => alertBox.remove(), 2000);
+    }
+
+    // ✅ Enable/Disable Edit and Delete buttons
+    teamDropdown.addEventListener("change", function () {
+        editTeamBtn.disabled = !this.value;
+        deleteTeamBtn.disabled = !this.value;
+    });
+
+    // ✅ Add Team
+    document.getElementById("add-team-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        fetch("/create_team/", {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("teamName").value,
+                contact_person: document.getElementById("contactPerson").value,
+                contact_email: document.getElementById("contactEmail").value,
+                contact_phone: document.getElementById("contactPhone").value,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                addTeamModal.hide();
+                showMessage("Team added!", "success");
+                const newOption = document.createElement("option");
+                newOption.value = data.team_id;
+                newOption.text = data.team_name;
+                teamDropdown.appendChild(newOption);
+                teamDropdown.value = data.team_id;
+            } else {
+                showMessage(data.message || "Failed to add team.", "error");
+            }
+        })
+        .catch(() => showMessage("An error occurred.", "error"));
+    });
+
+    // ✅ Edit Team
+    editTeamBtn.addEventListener("click", function () {
+        const teamId = teamDropdown.value;
+        if (!teamId) return;
+        fetch(`/get_team_details/${teamId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) return showMessage("Error loading team.", "error");
+            document.getElementById("editTeamId").value = teamId;
+            document.getElementById("editTeamName").value = data.name;
+            document.getElementById("editContactPerson").value = data.contact_person;
+            document.getElementById("editContactEmail").value = data.contact_email || "";
+            document.getElementById("editContactPhone").value = data.contact_phone;
+            editTeamModal.show();
+        })
+        .catch(() => showMessage("Failed to load team.", "error"));
+    });
+
+    document.getElementById("edit-team-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        const teamId = document.getElementById("editTeamId").value;
+        fetch(`/update_team/${teamId}/`, {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("editTeamName").value,
+                contact_person: document.getElementById("editContactPerson").value,
+                contact_email: document.getElementById("editContactEmail").value,
+                contact_phone: document.getElementById("editContactPhone").value,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                editTeamModal.hide();
+                showMessage("Team updated!", "success");
+                const selectedOption = teamDropdown.querySelector(`option[value="${teamId}"]`);
+                if (selectedOption) selectedOption.text = data.updated_team.name;
+            } else {
+                showMessage(data.message || "Update failed.", "error");
+            }
+        })
+        .catch(() => showMessage("An error occurred.", "error"));
+    });
+
+    // ✅ Delete Team
+    deleteTeamBtn.addEventListener("click", function () {
+        document.getElementById("confirm-delete-team").dataset.teamId = teamDropdown.value;
+    });
+
+    document.getElementById("confirm-delete-team").addEventListener("click", function () {
+        const teamId = this.dataset.teamId;
+        if (!teamId) return;
+        fetch(`/delete_team/${teamId}/`, {
+            method: "DELETE",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                deleteTeamModal.hide();
+                showMessage("Team deleted!", "success");
+                const optionToRemove = teamDropdown.querySelector(`option[value="${teamId}"]`);
+                if (optionToRemove) {
+                    teamDropdown.removeChild(optionToRemove);
+                    teamDropdown.value = "";
+                    editTeamBtn.disabled = true;
+                    deleteTeamBtn.disabled = true;
+                }
+            } else {
+                showMessage(data.message || "Delete failed.", "error");
+            }
+        })
+        .catch(() => showMessage("An error occurred.", "error"));
+    });
+});
+document.addEventListener("DOMContentLoaded", function() {
+    const paymentTypeInputs = document.querySelectorAll('input[name="payment_type"]');
+    const downpaymentField = document.querySelector('.downpayment-field');
+    const paymentAmountInput = document.querySelector('input[name="payment_amount"]');
+    const downpaymentInput = document.querySelector('input[name="downpayment"]');
+
+    // Function to handle payment type change
+    function handlePaymentTypeChange() {
+        const selectedValue = document.querySelector('input[name="payment_type"]:checked')?.value;
+        
+        if (selectedValue === 'INSTALLMENT') {
+            downpaymentField.style.display = 'block';
+            downpaymentInput.required = true;
+        } else {
+            downpaymentField.style.display = 'none';
+            downpaymentInput.required = false;
+            downpaymentInput.value = '';
+        }
+    }
+
+    // Add event listeners
+    paymentTypeInputs.forEach(input => {
+        input.addEventListener('change', handlePaymentTypeChange);
+    });
+
+    // Validate downpayment is less than total amount
+    downpaymentInput?.addEventListener('input', function() {
+        const totalAmount = parseFloat(paymentAmountInput.value) || 0;
+        const downpayment = parseFloat(this.value) || 0;
+        
+        if (downpayment >= totalAmount) {
+            this.setCustomValidity('Downpayment must be less than total amount');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+
+    // Initial check for payment type
+    handlePaymentTypeChange();
+});
+
+</script>
+
+
+{% endblock %}

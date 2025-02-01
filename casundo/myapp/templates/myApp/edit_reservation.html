@@ -1,0 +1,86 @@
+{% extends 'myApp/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit Reservation</h2>
+    
+    <form method="POST" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="team" class="form-label">Team</label>
+            <select name="team" id="team" class="form-control" required>
+                {% for team in teams %}
+                    <option value="{{ team.id }}" {% if team.id == reservation.team.id %}selected{% endif %}>
+                        {{ team.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="court" class="form-label">Court</label>
+            <select name="court" id="court" class="form-control" required>
+                {% for court in courts %}
+                    <option value="{{ court.id }}" {% if court.id == reservation.court.id %}selected{% endif %}>
+                        {{ court.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" name="date" id="date" class="form-control" 
+                   value="{{ reservation.date|date:'Y-m-d' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="start_time" class="form-label">Start Time</label>
+            <input type="time" name="start_time" id="start_time" class="form-control" 
+                   value="{{ reservation.start_time|time:'H:i' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="end_time" class="form-label">End Time</label>
+            <input type="time" name="end_time" id="end_time" class="form-control" 
+                   value="{{ reservation.end_time|time:'H:i' }}" required>
+        </div>
+
+        <!-- Payment Status -->
+        <div class="mb-3">
+            <label for="payment_status" class="form-label">Payment Status</label>
+            <select name="payment_status" id="payment_status" class="form-control">
+                <option value="PARTIAL" {% if reservation.payment.payment_status == 'PARTIAL' %}selected{% endif %}>
+                    Partially Paid
+                </option>
+                <option value="FULL" {% if reservation.payment.payment_status == 'FULL' %}selected{% endif %}>
+                    Fully Paid
+                </option>
+            </select>
+        </div>
+
+        <!-- Court Status -->
+        <div class="mb-3">
+            <label for="court_status" class="form-label">Court Status</label>
+            <select name="court_status" id="court_status" class="form-control">
+                <option value="UNUSED" {% if reservation.court_status == 'UNUSED' %}selected{% endif %}>
+                    Unused
+                </option>
+                <option value="ONGOING" {% if reservation.court_status == 'ONGOING' %}selected{% endif %}>
+                    Ongoing
+                </option>
+                <option value="DONE" {% if reservation.court_status == 'DONE' %}selected{% endif %}>
+                    Done
+                </option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Update Reservation</button>
+            <a href="{% url 'reservation_status' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

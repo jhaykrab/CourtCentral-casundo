@@ -1,0 +1,305 @@
+{% extends 'myApp/base.html' %}
+{% load crispy_forms_tags %} {% load static %}
+
+{% block content %}
+<div class="container mt-5 mb -4 p-4 content-section">
+    <div class="container mt-5 mb-5 p-4 shadow-sm bg-white rounded add-court-container">
+        <h1 class="title-spacing">Registered Courts</h1>
+
+        {% if messages %}
+            <div class="container mt-3">
+                {% for message in messages %}
+                    <div class="alert alert-dismissible fade show
+                                {% if message.tags == 'success' %}alert-success-custom
+                                {% elif message.tags == 'error' or message.tags == 'danger' %}alert-error-custom{% endif %}"
+                         role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Add Search Bar -->
+        <div class="search-container">
+            <div class="position-relative flex-grow-1">
+                <input type="text" id="courtSearch" class="search-input" placeholder="Search courts...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            <button class="clear-search" id="clearCourtSearch">Clear</button>
+        </div>
+
+        {% if courts %}
+        <div class="table-container">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Location</th>
+                        <th>Court Type</th>
+                        <th>Description</th>
+                        <th>Image</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for court in courts %}
+                        <tr>
+                            <td title="{{ court.name }}">{{ court.name }}</td>
+                            <td title="{{ court.location }}">{{ court.location }}</td>
+                            <td title="{{ court.get_court_type_display }}">{{ court.get_court_type_display }}</td>
+                            <td title="{{ court.get_description_display }}">{{ court.get_description_display|truncatechars:100 }}</td>
+                            <td>
+                                {% if court.image %}
+                                    <a href="#" class="court-image-name" data-image-url="{{ court.image.url }}">
+                                        {{ court.image.name|cut:"courts/"|truncatechars:20 }}
+                                    </a>
+                                {% else %}
+                                    No Image
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-warning edit-court"
+                                    data-court-id="{{ court.id }}"
+                                    data-court-name="{{ court.name }}"
+                                    data-court-location="{{ court.location }}"
+                                    data-court-type="{{ court.court_type }}"
+                                    data-court-description="{{ court.description }}"
+                                    {% if court.image %}data-court-image="{{ court.image.url }}"{% endif %}
+                                    data-bs-toggle="modal" data-bs-target="#editModal">Edit</button>
+                                <button type="button" class="btn btn-sm btn-danger delete-court"
+                                    data-court-id="{{ court.id }}"
+                                    data-court-name="{{ court.name }}"
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% else %}
+        <p>No courts have been registered yet.</p>
+    {% endif %}
+           <!-- Add Court Button Sticks to Bottom-Right -->
+    <div class="add-court-button">
+        <a href="{% url 'register_court' %}" class="btn custom-add-court px-4 py-2 shadow">Add Court</a>
+    </div>
+</div>
+
+
+
+
+
+
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Court Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" alt="Court Image" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Court</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                   <form id="editForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="court_id" id="editCourtId">
+                        <div id="editFormFields"></div>  <!-- Form fields will be injected here -->
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Delete Court</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <span id="deleteCourtName"></span>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('courtSearch');
+    const clearButton = document.getElementById('clearCourtSearch');
+    const tableRows = document.querySelectorAll('table tbody tr');
+
+    function filterCourts(searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        
+        tableRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const shouldShow = text.includes(searchTerm);
+            row.style.display = shouldShow ? '' : 'none';
+        });
+
+        // Show/hide clear button
+        clearButton.classList.toggle('visible', searchTerm.length > 0);
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        filterCourts(e.target.value);
+    });
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        filterCourts('');
+    });
+});
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const editButtons = document.querySelectorAll('.edit-court');
+        const deleteButtons = document.querySelectorAll('.delete-court');
+
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+        const editCourtId = document.getElementById('editCourtId');
+        const editFormFields = document.getElementById('editFormFields');
+
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteCourtName = document.getElementById('deleteCourtName');
+        const confirmDelete = document.getElementById('confirmDelete');
+
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+         // ✅ SUCCESS & ERROR MESSAGE AUTO-DISMISS (1s)
+        const messages = document.querySelectorAll('.alert');
+        messages.forEach(msg => {
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.className = 'btn-close';
+            closeBtn.onclick = () => msg.remove();
+            msg.appendChild(closeBtn);
+
+            setTimeout(() => msg.remove(), 2000); // Auto-hide after 1 second
+        });
+
+
+        // ✅ EDIT COURT FUNCTIONALITY
+        editButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const courtId = button.dataset.courtId;
+
+                editCourtId.value = courtId;
+                editFormFields.innerHTML = '<p>Loading...</p>'; // Show loading text
+
+                fetch(`/edit_court_form/${courtId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.form_html) {
+                            editFormFields.innerHTML = data.form_html;
+                        } else {
+                            editFormFields.innerHTML = '<p>Error loading form.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching form:', error);
+                        editFormFields.innerHTML = '<p>Error loading form.</p>';
+                    });
+            });
+        });
+
+        // ✅ FORM SUBMISSION FOR EDITING COURT
+        editForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const formData = new FormData(editForm); // Collect form data
+
+            fetch(`/edit_court/${editCourtId.value}/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken // Include CSRF token
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload(); // Reload the page to see changes
+                } else {
+                    alert('Error saving changes.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving changes.');
+            });
+        });
+
+        // ✅ DELETE COURT FUNCTIONALITY
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const courtId = button.dataset.courtId;
+                const courtName = button.dataset.courtName;
+
+                deleteCourtName.textContent = courtName;
+
+                confirmDelete.onclick = function () {
+                    fetch(`/delete_court/${courtId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json'
+                        },
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Error deleting court.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred.');
+                    });
+                };
+            });
+        });
+
+        // ✅ IMAGE MODAL FUNCTIONALITY
+        document.querySelectorAll('.court-image-name').forEach(imgLink => {
+            imgLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                const imageUrl = this.dataset.imageUrl;
+
+                const modal = document.getElementById('imageModal');
+                const modalImg = document.getElementById('modalImage');
+                modalImg.src = imageUrl;
+
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+            });
+        });
+    });
+
+</script>
+{% endblock %}

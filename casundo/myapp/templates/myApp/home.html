@@ -1,10 +1,190 @@
 {% extends 'myApp/base.html' %}
 {% load static %}
 
+{% block title %}CourtCentral - Home{% endblock %}
+
 {% block content %}
+{% csrf_token %} 
+<div class="home-container">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-content">
+            <div class="hero-text-wrapper">
+                <h1 class="main-title">
+                    <span class="highlight">Welcome</span>
+                    <span style="color: #FF8C00; font-weight: bold;">{{ request.user.username|title }}</span>!
+                    <div class="title-decoration"></div>
+                </h1>
+                <p class="subtitle">Experience fast and hassle free reservation of your preferred court!</p>
+            </div>
+            <div class="cta-buttons">
+                {% if user.is_authenticated %}
+                    <!-- User is logged in - direct to actual pages -->
+                    <button onclick="window.location.href='{% url 'create_reservation' %}'" class="btn btn-primary p-5 btn-lg">
+                        <i class="fas fa-calendar-plus"></i>
+                        Book Now
+                    </button>
+                    <button onclick="window.location.href='{% url 'reservation_status' %}'" class="btn btn-outline-primary p-5 btn-lg">
+                        <i class="fas fa-list-check"></i>
+                        View Bookings
+                    </button>
+                {% else %}
+                    <!-- User is not logged in - open auth modal -->
+                    <button onclick="openAuthModal('login')" class="btn btn-primary p-5 btn-lg">
+                        <i class="fas fa-calendar-plus"></i>
+                        Book Now
+                    </button>
+                    <button onclick="openAuthModal('login')" class="btn btn-outline-primary p-5 btn-lg">
+                        <i class="fas fa-list-check"></i>
+                        View Bookings
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="hero-image-wrapper">
+            <div class="hero-image">
+                <img class="cclogo" src="{% static 'images/mylogo.png' %}" alt="CourtCentral Logo">
+                <div class="image-decoration"></div>
+            </div>
+        </div>
+    </div>
 
-    <h1>Hello World!</h1>
+    <!-- Features Section -->
+    <div class="features-section">
+        <h2 class="section-title">
+            Why Choose <span class="highlight">CourtCentral</span>
+            <div class="title-underline"></div>
+        </h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">
+                    <i class="fas fa-bolt feature-icon"></i>
+                </div>
+                <h3>Quick Booking</h3>
+                <p>Reserve your court in seconds with our streamlined booking process</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">
+                    <i class="fas fa-clock feature-icon"></i>
+                </div>
+                <h3>Real-time Updates</h3>
+                <p>Get instant notifications about court availability and reservations</p>
+            </div>
+            
+        </div>
+    </div>
+   <!-- Auth Modal -->
+    <div class="auth-modal" id="authModal">
+        <div class="auth-modal-content">
+            <button class="close-modal" onclick="closeAuthModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="auth-modal-body">
+                <!-- Form will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-<img class='cclogo' src="{% static 'images/ccLogo.png' %}">
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get CSRF token function
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]').getAttribute('content') || 
+                   document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        }
+    
+         // Function to open auth modal
+        window.openAuthModal = function(mode) {
+            const modal = document.getElementById('authModal');
+            const modalBody = modal.querySelector('.auth-modal-body');
+            
+            fetch(`/load-auth-form/${mode}/`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(html => {
+                modalBody.innerHTML = html;
+                
+                // Clear any existing messages after loading the form
+                const messages = modalBody.querySelectorAll('.auth-message');
+                messages.forEach(msg => msg.remove());
+                
+                modal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+                
+                // Add form submit handler to the newly loaded form
+                const form = modalBody.querySelector('form');
+                if (form) {
+                    form.addEventListener('submit', handleFormSubmit);
+                }
+            });
+        };
 
-{% endblock content %}
+    
+        // Function to handle form submission
+        function handleFormSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        // Clear any existing messages before submission
+        const existingMessages = document.querySelectorAll('.auth-message');
+        existingMessages.forEach(msg => msg.remove());
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCSRFToken()
+            },
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'auth-message auth-message-error';
+                errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.message}`;
+                form.insertBefore(errorDiv, form.firstChild);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+    
+        // Function to close modal
+        window.closeAuthModal = function() {
+            const modal = document.getElementById('authModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        };
+    
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('authModal');
+            if (event.target === modal) {
+                closeAuthModal();
+            }
+        });
+    
+        // Add form submission handler for any existing forms
+        document.addEventListener('submit', function(e) {
+            if (e.target.classList.contains('auth-form')) {
+                handleFormSubmit(e);
+            }
+        });
+    });
+    </script>
+{% endblock %}
