@@ -14,6 +14,7 @@ from .models import Court, Reservation, Team, UserProfile, ReservationStatus
 from .forms import ReservationForm, CourtForm, SignUpForm
 from django.core.exceptions import ValidationError
 from django.utils import timezone 
+from datetime import datetime
 
 import json
 import logging
@@ -337,6 +338,7 @@ def delete_team(request, team_id):
             return JsonResponse({"status": "error", "message": "Team not found"}, status=404)
 
 @login_required
+@login_required
 def create_reservation(request):
     teams = Team.objects.filter(user=request.user)
 
@@ -345,25 +347,44 @@ def create_reservation(request):
         selected_team_id = request.POST.get('team')
 
         if form.is_valid():
-            reservation = form.save(commit=False)
-            reservation.user = request.user
+            try:
+                # Get the team instance
+                team = get_object_or_404(Team, pk=selected_team_id)
+                
+                # Create reservation instance but don't save yet
+                reservation = form.save(commit=False)
+                reservation.user = request.user
+                reservation.team = team
 
-            if selected_team_id:
-                reservation.team = get_object_or_404(Team, pk=selected_team_id)
+                # Generate reservation number (TEAM4DIGITS + MMDDYYYY)
+                team_prefix = team.name[:4].upper()
+                date_suffix = datetime.now().strftime('%m%d%Y')
+                reservation.reservation_number = f"{team_prefix}{date_suffix}"
 
-            reservation.save()
+                # Save the reservation
+                reservation.save()
 
-            # Create payment record
-            payment = ReservationStatus.objects.create(
-                user=request.user,
-                reservation=reservation,
-                amount=form.cleaned_data['payment_amount'],
-                downpayment=form.cleaned_data.get('downpayment'),
-                payment_status='PARTIAL' if form.cleaned_data['payment_type'] == 'INSTALLMENT' else 'FULL'
-            )
+                # Create payment record
+                payment = ReservationStatus.objects.create(
+                    user=request.user,
+                    reservation=reservation,
+                    amount=form.cleaned_data['payment_amount'],
+                    downpayment=form.cleaned_data.get('downpayment'),
+                    payment_status='PARTIAL' if form.cleaned_data['payment_type'] == 'INSTALLMENT' else 'FULL'
+                )
 
-            messages.success(request, "Reservation created successfully!")
-            return redirect(reverse('create_reservation'))
+                messages.success(
+                    request,
+                    f"Reservation created successfully! Your reservation number is: {reservation.reservation_number}"
+                )
+                
+
+
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Error creating reservation: {str(e)}'
+                }, status=400)
         else:
             # Get all error messages and join them
             error_messages = []
@@ -373,7 +394,10 @@ def create_reservation(request):
                 else:
                     error_messages.extend([f"{field}: {str(error)}" for error in errors])
             
-            messages.error(request, " ".join(error_messages))
+            return JsonResponse({
+                'status': 'error',
+                'message': " ".join(error_messages)
+            }, status=400)
     else:
         form = ReservationForm()
         selected_team_id = None
@@ -387,27 +411,35 @@ def create_reservation(request):
 @login_required
 def court_calendar(request):
     selected_date_str = request.GET.get('date')
+    search_query = request.GET.get('search', '').strip().upper()
     selected_date = None
     reservations = []
+
+    # Base queryset with related data
+    base_query = Reservation.objects.filter(user=request.user).select_related('team', 'court')
 
     if selected_date_str:
         try:
             selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-            reservations = Reservation.objects.filter(
-                date=selected_date,
-                user=request.user
-            ).select_related('team', 'court')
+            reservations = base_query.filter(date=selected_date)
         except ValueError:
             pass
 
+    # Apply search filter if there's a search query
+    if search_query:
+        reservations = base_query.filter(
+            reservation_number__exact=search_query
+        )
+
     courts = Court.objects.filter(user=request.user).prefetch_related('reservations')
-    teams = Team.objects.filter(user=request.user)  # Add this line to get user's teams
+    teams = Team.objects.filter(user=request.user)
 
     return render(request, 'myApp/court_calendar.html', {
         'reservations': reservations,
         'selected_date': selected_date,
         'courts': courts,
-        'teams': teams,  # Add teams to context
+        'teams': teams,
+        'search_query': search_query,  # Pass search query to template
     })
 
 @login_required
@@ -433,6 +465,13 @@ def get_reservation_details(request, reservation_id):
 
         data = {
             'status': 'success',
+            'reservation': {
+                'reservation_number': reservation.reservation_number,  # Add this line
+                'date': reservation.date,
+                'start_time': reservation.start_time.strftime('%H:%M'),
+                'end_time': reservation.end_time.strftime('%H:%M'),
+                'court_status': reservation.reservation_status.court_status if reservation.reservation_status else 'UNUSED',
+            },
             'team': {
                 'id': reservation.team.id if reservation.team else None,
                 'name': reservation.team.name if reservation.team else 'No Team',
@@ -445,12 +484,6 @@ def get_reservation_details(request, reservation_id):
                 'name': reservation.court.name,
                 'location': reservation.court.location if hasattr(reservation.court, 'location') else '',
                 'description': reservation.court.description if hasattr(reservation.court, 'description') else ''
-            },
-            'reservation': {
-                'date': reservation.date.strftime('%Y-%m-%d'),
-                'start_time': reservation.start_time.strftime('%H:%M'),
-                'end_time': reservation.end_time.strftime('%H:%M'),
-                'court_status': reservation_status.court_status
             },
             'payment': {
                 'status': reservation_status.payment_status,
@@ -581,13 +614,25 @@ def delete_reservation(request, reservation_id):
 
 @login_required
 def reservation_status(request):
-    # Use select_related to efficiently fetch related data
+    # Get the search query from request
+    search_query = request.GET.get('search', '').strip().upper()  # Convert to uppercase since reservation numbers are stored uppercase
+    
+    # Base queryset with related data
     reservations = Reservation.objects.select_related(
         'user', 
         'team', 
         'court', 
         'reservation_status'
-    ).filter(user=request.user).order_by('-date')
+    ).filter(user=request.user)
+    
+    # Apply search filter if there's a search query
+    if search_query:
+        reservations = reservations.filter(
+            reservation_number__exact=search_query  # Use exact match instead of icontains
+        )
+    
+    # Order by date
+    reservations = reservations.order_by('-date')
 
     # Create missing reservation statuses if needed
     for reservation in reservations:
@@ -603,8 +648,10 @@ def reservation_status(request):
 
     context = {
         'reservations': reservations,
+        'search_query': search_query,  # Pass the search query back to the template
     }
     return render(request, 'myApp/reservation_status.html', context)
+
 
 @login_required
 def calendar_reservations(request):
@@ -617,7 +664,7 @@ def calendar_reservations(request):
         for reservation in reservations:
             event = {
                 'id': reservation.id,
-                'title': f"{reservation.team.name if reservation.team else 'No Team'} ({reservation.court.name})",
+                'title': f"{reservation.reservation_number} - {reservation.team.name if reservation.team else 'No Team'} ({reservation.court.name})",
                 'start': f"{reservation.date.isoformat()}T{reservation.start_time.strftime('%H:%M:%S')}",
                 'end': f"{reservation.date.isoformat()}T{reservation.end_time.strftime('%H:%M:%S')}",
                 'description': reservation.court.description,
@@ -625,6 +672,7 @@ def calendar_reservations(request):
                 'court_name': reservation.court.name,
                 'team_id': reservation.team.id if reservation.team else None,
                 'team_name': reservation.team.name if reservation.team else 'No Team',
+                'reservation_number': reservation.reservation_number
             }
             events.append(event)
 

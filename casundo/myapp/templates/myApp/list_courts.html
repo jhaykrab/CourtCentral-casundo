@@ -20,6 +20,15 @@
             </div>
         {% endif %}
 
+        <!-- Add Search Bar -->
+        <div class="search-container">
+            <div class="position-relative flex-grow-1">
+                <input type="text" id="courtSearch" class="search-input" placeholder="Search courts...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            <button class="clear-search" id="clearCourtSearch">Clear</button>
+        </div>
+
         {% if courts %}
         <div class="table-container">
             <table class="table table-striped">
@@ -138,6 +147,35 @@
 
 
 <script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('courtSearch');
+    const clearButton = document.getElementById('clearCourtSearch');
+    const tableRows = document.querySelectorAll('table tbody tr');
+
+    function filterCourts(searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        
+        tableRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const shouldShow = text.includes(searchTerm);
+            row.style.display = shouldShow ? '' : 'none';
+        });
+
+        // Show/hide clear button
+        clearButton.classList.toggle('visible', searchTerm.length > 0);
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        filterCourts(e.target.value);
+    });
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        filterCourts('');
+    });
+});
+
     document.addEventListener("DOMContentLoaded", function () {
         const editButtons = document.querySelectorAll('.edit-court');
         const deleteButtons = document.querySelectorAll('.delete-court');

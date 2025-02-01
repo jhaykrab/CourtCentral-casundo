@@ -1,3 +1,4 @@
+import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -81,7 +82,6 @@ class Team(models.Model):
 
 
 class Reservation(models.Model):
-    # Move choices to the top of the class
     COURT_STATUS_CHOICES = [
         ('UNUSED', 'Unused'),
         ('ONGOING', 'Ongoing'),
@@ -96,8 +96,27 @@ class Reservation(models.Model):
     end_time = models.TimeField()
     status = models.CharField(max_length=10, choices=RESERVATION_STATUSES, default=RESERVATION_STATUSES[0][0])
     court_status = models.CharField(max_length=10, choices=COURT_STATUS_CHOICES, default='UNUSED')
+    reservation_number = models.CharField(max_length=10, unique=True, null=True, blank=True)  # Modified
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    
+    class Meta:
+        ordering = ['-date', '-start_time']
+        verbose_name = "Reservation"
+        verbose_name_plural = "Reservations"
 
-    # Rest of the class remains the same
+    def save(self, *args, **kwargs):
+        if not self.reservation_number and self.team:
+            # Generate reservation number
+            team_prefix = self.team.name[:4].upper()
+            date_suffix = timezone.now().strftime('%m%d%Y')
+            self.reservation_number = f"{team_prefix}{date_suffix}"
+        
+        if not self.created_at:
+            self.created_at = timezone.now()
+            
+        self.clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         if self.start_time and self.end_time and self.start_time >= self.end_time:
             raise ValidationError("Start time must be before end time.")
@@ -108,18 +127,15 @@ class Reservation(models.Model):
             start_time__lt=self.end_time,
             end_time__gt=self.start_time,
         ).exclude(pk=self.pk if self.pk else None)
+        
         if overlaps.exists():
             raise ValidationError('This court is already booked for this time.')
-        super().clean()
 
     def __str__(self):
-        return f"{self.team.name if self.team else 'No Team'} reserved {self.court.name} on {self.date} from {self.start_time} to {self.end_time}"
+        team_name = self.team.name if self.team else 'No Team'
+        return f"{self.reservation_number or 'No Number'} - {team_name} reserved {self.court.name} on {self.date}"
 
-    class Meta:
-        verbose_name = "Reservation"
-        verbose_name_plural = "Reservations"
-        ordering = ['date', 'start_time']
-
+   
 
 class ReservationStatus(models.Model):
     PAYMENT_STATUS_CHOICES = [
@@ -160,7 +176,7 @@ class ReservationStatus(models.Model):
     class Meta:
         verbose_name = "Reservation Status"
         verbose_name_plural = "Reservation Statuses"
-        
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(
@@ -168,14 +184,14 @@ class UserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='profile'
     )
-    phone_number = models.CharField(max_length=20)
-    address = models.TextField()
+    phone_number = models.CharField(max_length=20, default='', blank=True)
+    address = models.TextField(default='', blank=True)
     profile_picture = models.ImageField(
         upload_to='profile_pics/', 
         null=True, 
         blank=True
     )
-    created_at = models.DateTimeField(default=timezone.now)  # This will work now
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -186,10 +202,14 @@ class UserProfile(models.Model):
 
     @classmethod
     def get_or_create_profile(cls, user, **profile_data):
-        """Get or create a UserProfile for the given user with optional profile data."""
-        profile, created = cls.objects.get_or_create(user=user)
+        profile, created = cls.objects.get_or_create(
+            user=user,
+            defaults={
+                'phone_number': '',
+                'address': ''
+            }
+        )
         
-        # Update profile with provided data
         if profile_data:
             for key, value in profile_data.items():
                 if hasattr(profile, key) and value is not None:

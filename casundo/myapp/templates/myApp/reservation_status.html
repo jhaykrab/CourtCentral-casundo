@@ -23,6 +23,32 @@
 
     {% if reservations %}
         <div class="table-responsive">
+            <!-- Add before the table -->
+            <div class="search-container">
+                <form method="GET" action="{% url 'reservation_status' %}" style="width: 100%; display: flex; gap: 1rem;">
+                    <div style="position: relative; flex: 1;">
+                        <input 
+                            type="text" 
+                            name="search" 
+                            class="search-input" 
+                            placeholder="Search by Reservation Number or Team Name..."
+                            value="{{ search_query }}"
+                        >
+                        <i class="fas fa-search search-icon" style="cursor: pointer;" onclick="submitSearch()"></i>
+                    </div>
+                    {% if search_query %}
+                        <button type="button" class="clear-search visible" onclick="clearSearch()">
+                            Clear
+                        </button>
+                    {% endif %}
+                </form>
+            </div>
+            
+            {% if search_query and not reservations %}
+                <div class="alert alert-info text-center" style="width: 50%; margin: 1rem auto;">
+                    No reservations found with the number "{{ search_query }}"
+                </div>
+            {% endif %}
             <table class="table table-hover">
                 <thead>
                     <tr>
@@ -39,7 +65,7 @@
                 <!-- Replace the existing table rows with this -->
                 <tbody>
                     {% for reservation in reservations %}
-                        <tr>
+                        <tr data-reservation-number="{{ reservation.reservation_number }}">
                             <!-- In your table -->
                             <td>{{ reservation.team.name|default:"No Team" }}</td>
                             <td>{{ reservation.court.name }}</td>
@@ -93,7 +119,7 @@
                                     </button>
                                 </div>
                             </td>
-                            
+
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -101,7 +127,7 @@
         </div>
     {% else %}
         <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> No reservations found. 
+            <i class="fas fa-info-circle"></i> No reservations found.
             <a href="{% url 'create_reservation' %}" class="alert-link">Create a reservation</a>
         </div>
     {% endif %}
@@ -121,7 +147,7 @@
                 {% csrf_token %}
                 <div class="modal-body">
                     <input type="hidden" id="reservation_id" name="reservation_id">
-                    
+
                     <!-- Payment Status -->
                     <div class="mb-4">
                         <label for="edit_payment_status" class="form-label">
@@ -175,7 +201,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Reservation Details
+                    <i class="fas fa-info-circle me-2"></i>Reservation Number: <span id="modalReservationNumber"></span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -330,6 +356,71 @@
 
 {% block scripts %}
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('.search-input');
+    const tableRows = document.querySelectorAll('table tbody tr');
+
+    function filterReservations(searchTerm) {
+        searchTerm = searchTerm.toLowerCase().trim();
+
+        // Show all rows if search is empty
+        if (!searchTerm) {
+            tableRows.forEach(row => row.style.display = '');
+            return;
+        }
+
+        tableRows.forEach(row => {
+            // Get the reservation data from the row
+            const teamName = row.cells[0].textContent.toLowerCase();
+            const courtName = row.cells[1].textContent.toLowerCase();
+            
+            // Get reservation number from data attribute
+            const reservationNumber = row.getAttribute('data-reservation-number')?.toLowerCase() || '';
+
+            // Check if search term matches any of the fields
+            const matches = 
+                teamName.includes(searchTerm) || 
+                courtName.includes(searchTerm) || 
+                reservationNumber.includes(searchTerm);
+
+            row.style.display = matches ? '' : 'none';
+        });
+    }
+
+    // Real-time search as user types
+    searchInput?.addEventListener('input', function(e) {
+        filterReservations(e.target.value);
+    });
+
+    // Search on Enter key press
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            filterReservations(this.value);
+        }
+    });
+
+    // Search icon click
+    document.querySelector('.search-icon')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        filterReservations(searchInput.value);
+    });
+});
+
+function clearSearch() {
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+        searchInput.value = '';
+        // Trigger the input event to update the table
+        searchInput.dispatchEvent(new Event('input'));
+    }
+    
+    // Hide clear button
+    const clearButton = document.querySelector('.clear-search');
+    if (clearButton) {
+        clearButton.style.display = 'none';
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
     // Handle View Details button clicks
     document.querySelectorAll('.view-details').forEach(button => {
@@ -367,28 +458,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Received data:', data); // For debugging
                 if (data.status === 'success') {
                     // Team Information
+                    document.getElementById('modalReservationNumber').textContent = data.reservation.reservation_number || 'N/A';
                     document.getElementById('modalTeamName').textContent = data.team.name || 'N/A';
                     document.getElementById('modalContactPerson').textContent = data.team.contact_person || 'N/A';
                     document.getElementById('modalContactEmail').textContent = data.team.contact_email || 'N/A';
                     document.getElementById('modalContactPhone').textContent = data.team.contact_phone || 'N/A';
-                    
+
                     // Court Information
                     document.getElementById('modalCourtName').textContent = data.court.name || 'N/A';
                     document.getElementById('modalCourtLocation').textContent = data.court.location || 'N/A';
-                    
+
                     // Reservation Details
                     document.getElementById('modalDate').textContent = data.reservation.date || 'N/A';
-                    document.getElementById('modalTime').textContent = 
+                    document.getElementById('modalTime').textContent =
                         `${data.reservation.start_time} - ${data.reservation.end_time}`;
                     document.getElementById('modalStatus').textContent = data.reservation.court_status || 'N/A';
-                    
+
                     // Payment Information
-                    document.getElementById('modalAmount').textContent = 
+                    document.getElementById('modalAmount').textContent =
                         data.payment.amount ? `₱${parseFloat(data.payment.amount).toFixed(2)}` : 'N/A';
                     document.getElementById('modalPaymentStatus').textContent = data.payment.status || 'N/A';
-                    document.getElementById('modalDownpayment').textContent = 
+                    document.getElementById('modalDownpayment').textContent =
                         data.payment.downpayment ? `₱${parseFloat(data.payment.downpayment).toFixed(2)}` : 'N/A';
-                    document.getElementById('modalBalance').textContent = 
+                    document.getElementById('modalBalance').textContent =
                         data.payment.balance ? `₱${parseFloat(data.payment.balance).toFixed(2)}` : 'N/A';
 
                     // Show the modal
@@ -404,6 +496,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert(`Error fetching reservation details: ${error.message}`);
             });
     }
+});
+function clearSearch() {
+    window.location.href = "{% url 'reservation_status' %}";
+}
+
+function submitSearch() {
+    document.querySelector('form').submit();
+}
+
+// Submit form when pressing Enter
+document.querySelector('.search-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitSearch();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('statusSearch');
+    const clearButton = document.getElementById('clearStatusSearch');
+    const tableRows = document.querySelectorAll('table tbody tr');
+
+    function filterReservations(searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+
+        tableRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const shouldShow = text.includes(searchTerm);
+            row.style.display = shouldShow ? '' : 'none';
+        });
+
+        clearButton.classList.toggle('visible', searchTerm.length > 0);
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        filterReservations(e.target.value);
+    });
+
+    clearButton.addEventListener('click', () => {
+        searchInput.value = '';
+        filterReservations('');
+    });
 });
 
             document.addEventListener('DOMContentLoaded', function() {
@@ -422,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.status === 'success') {
                             // Set the reservation ID in the hidden input
                             document.getElementById('reservation_id').value = reservationId;
-                            
+
                             // Fill only status fields
                             document.getElementById('edit_payment_status').value = data.payment.payment_status;
                             document.getElementById('edit_court_status').value = data.reservation.court_status;
@@ -440,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.delete-reservation').forEach(button => {
         button.addEventListener('click', function() {
             const reservationId = this.dataset.reservationId;
-            
+
             if (confirm('Are you sure you want to delete this reservation?')) {
                 fetch(`/delete_reservation/${reservationId}/`, {
                     method: 'DELETE',

@@ -11,21 +11,34 @@
         <div class="hero-content">
             <div class="hero-text-wrapper">
                 <h1 class="main-title">
-                    <span class="highlight">Court</span>Central
+                    <span class="highlight">Welcome</span>
+                    <span style="color: #FF8C00; font-weight: bold;">{{ request.user.username|title }}</span>!
                     <div class="title-decoration"></div>
                 </h1>
-                <p class="subtitle">Experience seamless court booking with our modern reservation platform</p>
-                
+                <p class="subtitle">Experience fast and hassle free reservation of your preferred court!</p>
             </div>
             <div class="cta-buttons">
-                <button onclick="openAuthModal('signup')" class="btn btn-primary p-5 btn-lg">
-                    <i class="fas fa-calendar-plus"></i>
-                    Book Now
-                </button>
-                <button onclick="openAuthModal('signup')" class="btn btn-outline-primary p-5 btn-lg">
-                    <i class="fas fa-list-check"></i>
-                    View Bookings
-                </button>
+                {% if user.is_authenticated %}
+                    <!-- User is logged in - direct to actual pages -->
+                    <button onclick="window.location.href='{% url 'create_reservation' %}'" class="btn btn-primary p-5 btn-lg">
+                        <i class="fas fa-calendar-plus"></i>
+                        Book Now
+                    </button>
+                    <button onclick="window.location.href='{% url 'reservation_status' %}'" class="btn btn-outline-primary p-5 btn-lg">
+                        <i class="fas fa-list-check"></i>
+                        View Bookings
+                    </button>
+                {% else %}
+                    <!-- User is not logged in - open auth modal -->
+                    <button onclick="openAuthModal('login')" class="btn btn-primary p-5 btn-lg">
+                        <i class="fas fa-calendar-plus"></i>
+                        Book Now
+                    </button>
+                    <button onclick="openAuthModal('login')" class="btn btn-outline-primary p-5 btn-lg">
+                        <i class="fas fa-list-check"></i>
+                        View Bookings
+                    </button>
+                {% endif %}
             </div>
         </div>
         <div class="hero-image-wrapper">
@@ -175,4 +188,3 @@
     });
     </script>
 {% endblock %}
-    

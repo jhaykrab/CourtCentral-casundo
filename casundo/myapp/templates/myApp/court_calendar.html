@@ -3,6 +3,8 @@
 
 {% block content %}
     <div class="main-container">
+
+       
         <!-- Reservations Sidebar -->
         <div id="reservations-sidebar">
             <h3>Reservations by Court</h3>
@@ -11,18 +13,23 @@
                     <div class="court-reservations">
                         <h4>{{ court.name }}</h4>
                         {% if court.reservations.all %}
-                            {% for reservation in court.reservations.all %}
-                                <div class="reservation-item" data-reservation-id="{{ reservation.id }}">
-                                    <p><strong>Team:</strong> {{ reservation.team.name }}</p>
-                                    <p><strong>Date:</strong> {{ reservation.date }}</p>
-                                    <p><strong>Time:</strong> {{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }}</p>
-                                    <!-- Add Edit and Delete Buttons -->
-                                    <div class="reservation-actions">
-                                        <button class="btn btn-sm btn-primary edit-reservation" data-reservation-id="{{ reservation.id }}">Edit</button>
-                                        <button class="btn btn-sm btn-danger delete-reservation" data-reservation-id="{{ reservation.id }}">Delete</button>
-                                    </div>
-                                </div>
-                            {% endfor %}
+                        {% for reservation in court.reservations.all %}
+                        <div class="reservation-item" 
+                                data-reservation-id="{{ reservation.id }}"
+                                data-reservation-number="{{ reservation.reservation_number }}"
+                        >
+                            <p><strong>Reservation Number:</strong> {{ reservation.reservation_number }}</p>
+                            <p data-team-name="{{ reservation.team.name }}">
+                                <strong>Team:</strong> {{ reservation.team.name }}
+                            </p>
+                            <p><strong>Date:</strong> {{ reservation.date }}</p>
+                            <p><strong>Time:</strong> {{ reservation.start_time|time:"H:i" }} - {{ reservation.end_time|time:"H:i" }}</p>
+                            <div class="reservation-actions">
+                                <button class="btn btn-sm btn-primary edit-reservation" data-reservation-id="{{ reservation.id }}">Edit</button>
+                                <button class="btn btn-sm btn-danger delete-reservation" data-reservation-id="{{ reservation.id }}">Delete</button>
+                            </div>
+                        </div>
+                        {% endfor %}
                         {% else %}
                             <p>No reservations for this court.</p>
                         {% endif %}
@@ -38,6 +45,32 @@
 
         <!-- Calendar Container -->
         <div id="calendar-container">
+            <!-- Add this before your calendar section -->
+        <div class="search-container">
+            <form method="GET" action="{% url 'court_calendar' %}" style="width: 100%; display: flex; gap: 1rem;">
+                <div style="position: relative; flex: 1;">
+                    <input 
+                        type="text" 
+                        name="search" 
+                        class="search-input" 
+                        placeholder="Enter Reservation Number (e.g., DIAM02012025)"
+                        value="{{ search_query }}"
+                    >
+                    <i class="fas fa-search search-icon" style="cursor: pointer;" onclick="submitSearch()"></i>
+                </div>
+                {% if search_query %}
+                    <button type="button" class="clear-search visible" onclick="clearSearch()">
+                        Clear
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if search_query and not reservations %}
+            <div class="alert alert-info text-center" style="width: 50%; margin: 1rem auto;">
+                No reservations found with the number "{{ search_query }}"
+            </div>
+        {% endif %}
             <div id='calendar'></div>
         </div>
     </div>
@@ -51,6 +84,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <p><strong>Reservation Number:</strong> <span id="modalReservationNumber"></span></p>
                     <p><strong>Team:</strong> <span id="modalTeamName"></span></p>
                     <p><strong>Court:</strong> <span id="modalCourtName"></span></p>
                     <p><strong>Date:</strong> <span id="modalDate"></span></p>
@@ -143,263 +177,443 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        function initializeCalendar() {
-            if (typeof FullCalendar !== 'undefined') {
-                const calendarEl = document.getElementById('calendar');
-                if (calendarEl) {
-                    try {
-                        const calendar = new FullCalendar.Calendar(calendarEl, {
-                            initialView: 'dayGridMonth',
-                            themeSystem: 'bootstrap5',  // Bootstrap styling
-                            headerToolbar: {
-                                left: 'prev,next today',
-                                center: 'title',
-                                right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                            },
-                            events: '/calendar/reservations/',  // Fetch events from the backend
-                            dateClick: function(info) {
-                                window.location.href = "?date=" + info.dateStr;
-                            },
-                            eventDidMount: function(info) {
-                                // Custom styling for events
-                                info.el.style.backgroundColor = '#007bff';  // Blue event color
-                                info.el.style.color = 'white';  // White text for readability
-                                info.el.style.borderRadius = '5px';  // Rounded corners (optional)
-                            },
-                            eventClick: function(info) {
-                                // Extract event details
-                                const event = info.event;
-                                const reservationId = event.id;
-                                const teamName = event.extendedProps.team_name || 'No Team';
-                                const courtName = event.extendedProps.court_name || 'No Court';
-                                const description = event.extendedProps.description || 'No Description';
 
-                                // Populate the modal with event details
-                                document.getElementById('modalTeamName').textContent = teamName;
-                                document.getElementById('modalCourtName').textContent = courtName;
-                                document.getElementById('modalDate').textContent = event.start.toLocaleDateString();
-                                document.getElementById('modalStartTime').textContent = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                document.getElementById('modalEndTime').textContent = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                document.getElementById('modalDescription').textContent = description;
+document.addEventListener('DOMContentLoaded', function() {
+    // Show all reservations initially
+    showAllReservations();
+    
+    // Initialize calendar and search functionality
+    initializeCalendar();
+    initializeSearch();
+});
 
-                                // Set up edit button click handler
-                                document.getElementById('editReservationButton').onclick = () => {
-                                    if (reservationId) {
-                                        loadReservationDetails(reservationId);
-                                        // Close the details modal
-                                        bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
-                                    } else {
-                                        alert('Reservation ID is missing. Cannot edit.');
-                                    }
-                                };
+// Function to show all reservations
+function showAllReservations() {
+    const reservationItems = document.querySelectorAll('.reservation-item');
+    const courtSections = document.querySelectorAll('.court-reservations');
+    
+    // Show all reservation items
+    reservationItems.forEach(item => {
+        item.style.display = 'block';
+        item.classList.remove('highlighted');
+    });
 
-                                document.getElementById('deleteReservationButton').onclick = () => {
-                                    if (reservationId) {
-                                        if (confirm('Are you sure you want to delete this reservation?')) {
-                                            fetch(`/delete_reservation/${reservationId}/`, {
-                                                method: 'DELETE',
-                                                headers: {
-                                                    'X-CSRFToken': '{{ csrf_token }}',
-                                                },
-                                            })
-                                            .then(response => response.json())
-                                            .then(data => {
-                                                if (data.status === 'success') {
-                                                    window.location.reload(); // Refresh the page to reflect changes
-                                                } else {
-                                                    alert('Failed to delete reservation.');
-                                                }
-                                            })
-                                            .catch(error => {
-                                                console.error('Error:', error);
-                                                alert('An error occurred while deleting the reservation.');
-                                            });
-                                        }
-                                    } else {
-                                        alert('Reservation ID is missing. Cannot delete.');
-                                    }
-                                };
+    // Show all court sections
+    courtSections.forEach(section => {
+        section.style.display = 'block';
+    });
+}
 
-                                // Show the details modal
-                                const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
-                                modal.show();
-                            },
-                            loading: function(isLoading) {
-                                const calendarContainer = document.getElementById("calendar");
-                                calendarContainer.style.opacity = isLoading ? "0.5" : "1";
-                            }
-                        });
-                        calendar.render();
-                    } catch (error) {
-                        console.error("FullCalendar initialization error:", error);
-                    }
-                } else {
-                    console.error("Calendar element not found!");
-                }
-            } else {
-                console.log("FullCalendar not yet loaded. Trying again...");
-                setTimeout(initializeCalendar, 100);
-            }
+
+// Search functionality
+function initializeSearch() {
+    const searchInput = document.querySelector('.search-input');
+    const searchIcon = document.querySelector('.search-icon');
+
+    // Search icon click
+    searchIcon?.addEventListener('click', function(e) {
+        e.preventDefault();
+        submitSearch();
+    });
+
+    // Enter key press
+    searchInput?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitSearch();
         }
+    });
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeCalendar);
+    // Real-time search as user types
+    searchInput?.addEventListener('input', function(e) {
+        const searchTerm = e.target.value.trim();
+        if (!searchTerm) {
+            showAllReservations(); // Show all when search is empty
         } else {
-            initializeCalendar();
+            filterSidebarReservations(searchTerm);
         }
+    });
+}
 
-        // Handle Edit Reservation Form Submission
-        document.getElementById('edit-reservation-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const reservationId = document.getElementById('editReservationId').value;
-            
-            // Get form values
-            const formData = {
-                team: document.getElementById('editTeamSelect').value,
-                court: document.getElementById('editCourt').value,
-                date: document.getElementById('editDate').value, // This should be in YYYY-MM-DD format
-                start_time: document.getElementById('editStartTime').value,
-                end_time: document.getElementById('editEndTime').value,
-            };
+function filterSidebarReservations(searchTerm) {
+    const reservationItems = document.querySelectorAll('.reservation-item');
+    const courtSections = document.querySelectorAll('.court-reservations');
+    searchTerm = searchTerm.toUpperCase();
+    
+    // If search is empty, show everything
+    if (!searchTerm) {
+        reservationItems.forEach(item => {
+            item.style.display = 'block';
+            item.classList.remove('highlighted');
+        });
+        courtSections.forEach(section => {
+            section.style.display = 'block';
+        });
+        return;
+    }
 
-            // Validate required fields
-            if (!formData.date) {
-                alert('Date is required');
-                return;
+    // Hide all sections initially
+    courtSections.forEach(section => section.style.display = 'none');
+
+    // Filter and highlight matching items
+    reservationItems.forEach(item => {
+        const reservationNumber = item.dataset.reservationNumber;
+        const teamName = item.querySelector('[data-team-name]')?.dataset.teamName;
+        const shouldShow = reservationNumber === searchTerm || 
+                         (teamName && teamName.toUpperCase().includes(searchTerm));
+
+        item.style.display = shouldShow ? 'block' : 'none';
+        item.classList.toggle('highlighted', shouldShow);
+
+        // Show parent court section if it has visible reservations
+        if (shouldShow) {
+            const courtSection = item.closest('.court-reservations');
+            if (courtSection) {
+                courtSection.style.display = 'block';
             }
+        }
+    });
+}
 
-            // Send the request
-            fetch(`/edit_reservation/${reservationId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Close the modal
-                    const editModal = bootstrap.Modal.getInstance(document.getElementById('editReservationModal'));
-                    editModal.hide();
+function submitSearch() {
+    const searchInput = document.querySelector('.search-input');
+    const searchTerm = searchInput.value.trim().toUpperCase();
+    
+    // Prevent showing all reservations
+    if (!searchTerm) {
+        showAllReservations();
+        return;
+    }
+
+    // Hide all sections and items first
+    const courtSections = document.querySelectorAll('.court-reservations');
+    const reservationItems = document.querySelectorAll('.reservation-item');
+    
+    courtSections.forEach(section => section.style.display = 'none');
+    reservationItems.forEach(item => {
+        item.style.display = 'none';
+        item.classList.remove('highlighted');
+    });
+
+    // Show only matching items
+    let hasMatches = false;
+    reservationItems.forEach(item => {
+        const reservationNumber = item.dataset.reservationNumber;
+        const teamName = item.querySelector('[data-team-name]')?.dataset.teamName;
+        
+        if (reservationNumber === searchTerm || 
+            (teamName && teamName.toUpperCase().includes(searchTerm))) {
+            item.style.display = 'block';
+            item.classList.add('highlighted');
+            hasMatches = true;
+            
+            // Show the parent court section
+            const courtSection = item.closest('.court-reservations');
+            if (courtSection) {
+                courtSection.style.display = 'block';
+            }
+        }
+    });
+
+    // Update calendar without page reload
+    fetch(`/calendar/reservations/?search=${encodeURIComponent(searchTerm)}`)
+        .then(response => response.json())
+        .then(data => {
+            const calendar = document.querySelector('#calendar');
+            if (calendar) {
+                const calendarApi = calendar.getApi();
+                calendarApi.removeAllEvents();
+                calendarApi.addEventSource(data);
+            }
+        })
+        .catch(error => console.error('Error updating calendar:', error));
+
+    // Show no results message if needed
+    const noResultsDiv = document.querySelector('.alert-info');
+    if (noResultsDiv) {
+        noResultsDiv.style.display = hasMatches ? 'none' : 'block';
+    }
+
+    // Make clear button visible
+    const clearButton = document.querySelector('.clear-search');
+    if (clearButton) {
+        clearButton.style.display = 'block';
+    }
+}
+
+// Update the clear search function
+function clearSearch() {
+    // Clear search input
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
+    // Show all reservations
+    showAllReservations();
+
+    // Hide no results message
+    const noResultsDiv = document.querySelector('.alert-info');
+    if (noResultsDiv) {
+        noResultsDiv.style.display = 'none';
+    }
+
+    // Hide clear button
+    const clearButton = document.querySelector('.clear-search');
+    if (clearButton) {
+        clearButton.style.display = 'none';
+    }
+
+    // Refresh calendar without page reload
+    fetch('/calendar/reservations/')
+        .then(response => response.json())
+        .then(data => {
+            const calendar = document.querySelector('#calendar');
+            if (calendar) {
+                const calendarApi = calendar.getApi();
+                calendarApi.removeAllEvents();
+                calendarApi.addEventSource(data);
+            }
+        })
+        .catch(error => console.error('Error updating calendar:', error));
+}
+
+function initializeCalendar() {
+    if (typeof FullCalendar === 'undefined') {
+        setTimeout(initializeCalendar, 100);
+        return;
+    }
+
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) {
+        console.error("Calendar element not found!");
+        return;
+    }
+
+    try {
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            themeSystem: 'bootstrap5',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: '/calendar/reservations/',
+            dateClick: function(info) {
+                window.location.href = "?date=" + info.dateStr;
+            },
+            eventDidMount: function(info) {
+                const searchQuery = '{{ search_query|escapejs }}';
+                
+                if (searchQuery && info.event.extendedProps.reservation_number === searchQuery) {
+                    // Highlight searched event
+                    info.el.style.backgroundColor = '#ffd700';
+                    info.el.style.borderColor = '#ffa500';
+                    info.el.style.color = '#000000';
+                    info.el.style.fontWeight = 'bold';
+                    info.el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
                     
-                    // Refresh the page to show updated data
-                    window.location.reload();
+                    // Scroll to the event's date
+                    calendar.gotoDate(info.event.start);
                 } else {
-                    alert(data.message || 'Failed to update reservation.');
+                    // Default styling
+                    info.el.style.backgroundColor = '#007bff';
+                    info.el.style.color = 'white';
+                    info.el.style.borderRadius = '5px';
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while updating the reservation.');
-            });
+            },
+            eventClick: handleEventClick,
+            loading: function(isLoading) {
+                calendarEl.style.opacity = isLoading ? "0.5" : "1";
+            }
         });
+        
+        calendar.render();
+    } catch (error) {
+        console.error("Calendar initialization error:", error);
+    }
+}
 
-        // Handle Sidebar Edit Button Click
-        document.querySelectorAll('.edit-reservation').forEach(button => {
-            button.addEventListener('click', function() {
-                const reservationId = this.dataset.reservationId;
-                if (!reservationId) {
-                    console.error('No reservation ID found on button');
-                    alert('Error: No reservation ID found');
-                    return;
-                }
-                console.log('Edit button clicked for reservation:', reservationId);
-                loadReservationDetails(reservationId);
-            });
+function handleEventClick(info) {
+    const event = info.event;
+    const reservationId = event.id;
+    const reservationNumber = event.extendedProps.reservation_number || 'N/A';
+    const teamName = event.extendedProps.team_name || 'No Team';
+    const courtName = event.extendedProps.court_name || 'No Court';
+    const description = event.extendedProps.description || 'No Description';
+
+    // Populate modal
+    document.getElementById('modalReservationNumber').textContent = reservationNumber;
+    document.getElementById('modalTeamName').textContent = teamName;
+    document.getElementById('modalCourtName').textContent = courtName;
+    document.getElementById('modalDate').textContent = event.start.toLocaleDateString();
+    document.getElementById('modalStartTime').textContent = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('modalEndTime').textContent = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('modalDescription').textContent = description;
+
+    // Set up edit button
+    document.getElementById('editReservationButton').onclick = () => {
+        if (reservationId) {
+            loadReservationDetails(reservationId);
+            bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
+        }
+    };
+
+    // Set up delete button
+    document.getElementById('deleteReservationButton').onclick = () => {
+        if (reservationId) {
+            handleDelete(reservationId);
+        }
+    };
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+    modal.show();
+}
+
+// Reservation Management Functions
+function loadReservationDetails(reservationId) {
+    fetch(`/get_reservation/${reservationId}/`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                populateEditForm(data.reservation);
+                const editModal = new bootstrap.Modal(document.getElementById('editReservationModal'));
+                editModal.show();
+            } else {
+                throw new Error(data.message || 'Failed to fetch reservation details');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`Error loading reservation details: ${error.message}`);
         });
+}
 
-        // Function to load reservation details
-        function loadReservationDetails(reservationId) {
-            fetch(`/get_reservation/${reservationId}/`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Received data:', data); // For debugging
+function populateEditForm(reservation) {
+    document.getElementById('editReservationId').value = reservation.id;
+    
+    const elements = {
+        'editTeamSelect': reservation.team_id,
+        'editCourt': reservation.court_id,
+        'editDate': reservation.date,
+        'editStartTime': reservation.start_time,
+        'editEndTime': reservation.end_time
+    };
 
-                    if (data.status === 'success') {
-                        // Set the reservation ID
-                        document.getElementById('editReservationId').value = reservationId;
-                        
-                        // Set form values
-                        const teamSelect = document.getElementById('editTeamSelect');
-                        const courtSelect = document.getElementById('editCourt');
-                        const dateInput = document.getElementById('editDate');
-                        const startTimeInput = document.getElementById('editStartTime');
-                        const endTimeInput = document.getElementById('editEndTime');
+    for (const [elementId, value] of Object.entries(elements)) {
+        const element = document.getElementById(elementId);
+        if (element && value) {
+            element.value = value;
+        }
+    }
+}
 
-                        // Set values if elements exist and data is available
-                        if (teamSelect && data.reservation.team_id) {
-                            teamSelect.value = data.reservation.team_id;
-                        }
-                        if (courtSelect && data.reservation.court_id) {
-                            courtSelect.value = data.reservation.court_id;
-                        }
-                        if (dateInput && data.reservation.date) {
-                            dateInput.value = data.reservation.date;
-                        }
-                        if (startTimeInput && data.reservation.start_time) {
-                            startTimeInput.value = data.reservation.start_time;
-                        }
-                        if (endTimeInput && data.reservation.end_time) {
-                            endTimeInput.value = data.reservation.end_time;
-                        }
+function handleDelete(reservationId) {
+    if (!confirm('Are you sure you want to delete this reservation?')) return;
 
-                        // Show the edit modal
-                        const editModal = new bootstrap.Modal(document.getElementById('editReservationModal'));
-                        editModal.show();
-                    } else {
-                        console.error('Error in response:', data);
-                        alert(data.message || 'Failed to fetch reservation details.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error details:', error);
-                    alert(`Error loading reservation details: ${error.message}`);
-                });
+    fetch(`/delete_reservation/${reservationId}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.reload();
+        } else {
+            throw new Error('Failed to delete reservation');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the reservation.');
+    });
+}
+
+// Event Listeners
+document.getElementById('edit-reservation-form')?.addEventListener('submit', function(event) {
+    event.preventDefault();
+    const reservationId = document.getElementById('editReservationId').value;
+    
+    const formData = {
+        team: document.getElementById('editTeamSelect').value,
+        court: document.getElementById('editCourt').value,
+        date: document.getElementById('editDate').value,
+        start_time: document.getElementById('editStartTime').value,
+        end_time: document.getElementById('editEndTime').value,
+    };
+
+    if (!formData.date) {
+        alert('Date is required');
+        return;
+    }
+
+    updateReservation(reservationId, formData);
+});
+
+function updateReservation(reservationId, formData) {
+    fetch(`/edit_reservation/${reservationId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const editModal = bootstrap.Modal.getInstance(document.getElementById('editReservationModal'));
+            editModal.hide();
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Failed to update reservation');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the reservation.');
+    });
+}
+
+// Add styles for highlighted items
+document.head.insertAdjacentHTML('beforeend', `
+    <style>
+        .reservation-item {
+            transition: all 0.3s ease;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid transparent;
         }
 
-       // Handle Sidebar Delete Button Click
-        document.querySelectorAll('.delete-reservation').forEach(button => {
-            button.addEventListener('click', function() {
-                const reservationId = this.dataset.reservationId;
+        .reservation-item.highlighted {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            animation: highlightFade 1s ease;
+        }
 
-                // Set the reservation ID for the delete action
-                document.getElementById('confirmDeleteButton').dataset.reservationId = reservationId;
-
-                // Show the delete confirmation modal
-                const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
-                deleteModal.show();
-            });
-        });
-
-        // Handle Confirm Delete Button Click
-        document.getElementById('confirmDeleteButton').addEventListener('click', function() {
-            const reservationId = this.dataset.reservationId;
-
-            fetch(`/delete_reservation/${reservationId}/`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    window.location.reload(); // Refresh the page to reflect changes
-                } else {
-                    alert('Failed to delete reservation.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while deleting the reservation.');
-            });
-        });
+        @keyframes highlightFade {
+            from { background-color: #ffd700; }
+            to { background-color: #fff3cd; }
+        }
+        .clear-search {
+            display: none;
+        }
+        .clear-search.visible {
+            display: block;
+        }
+        .alert-info {
+            display: none;
+        }
+    </style>
+`);
     </script>
 {% endblock %}
